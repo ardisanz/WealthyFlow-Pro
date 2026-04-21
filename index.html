@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthyFlow Pro:  </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Jakarta Sans', sans-serif; 
+            background-color: #000000; 
+            color: #ffffff; 
+            overflow-x: hidden; 
+        }
+        [x-cloak] { display: none !important; }
+        
+        /* Glassmorphism Dark Card */
+        .glass-bento { 
+            background: rgba(22, 22, 26, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 2rem;
+            transition: all 0.3s ease;
+        }
+        .glass-bento:hover {
+            border-color: rgba(99, 102, 241, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Custom Scrollbar for History */
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
+
+        input, select { 
+            background: rgba(0, 0, 0, 0.3) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.05) !important; 
+            color: white !important; 
+        }
+        input:focus, select:focus {
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+        }
+    </style>
+</head>
+
+<body x-data="moneyApp()" class="p-6 md:p-12">
+
+    <header class="flex justify-between items-center mb-12">
+        <div class="flex items-center gap-4">
+            <img src="https://i.ibb.co/Xz9S7kS/profile-image.png" alt="Profile" class="w-16 h-16 rounded-full border-2 border-white/5 object-cover shadow-2xl">
+            <div>
+                <h1 class="text-xl font-extrabold tracking-tighter">Josh <span class="text-indigo-400">Hill</span></h1>
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em]">Strategic Account</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4 text-slate-500">
+            <button class="p-4 glass-bento hover:bg-white/5 rounded-full text-lg">🔍</button>
+            <button class="p-4 glass-bento hover:bg-white/5 rounded-full text-lg relative">
+                🔔
+                <span x-show="notifications.length > 0" class="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full"></span>
+            </button>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <aside class="lg:col-span-4 space-y-8">
+            <div class="glass-bento p-10 bg-gradient-to-br from-[#1b1b22] to-[#121216] relative overflow-hidden">
+                <img src="https://i.ibb.co/30Xn5C2/mastercard-logo.png" alt="Mastercard" class="absolute bottom-10 right-10 w-16 opacity-30">
+                
+                <p class="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-4">Total Liquidity</p>
+                <h2 class="text-6xl font-black tracking-tighter mb-12" x-text="formatRupiah(totalSaldo)"></h2>
+                
+                <div class="flex justify-between items-center text-slate-400">
+                    <div class="space-y-1">
+                        <p class="text-[10px] uppercase font-bold tracking-widest">Account End</p>
+                        <p class="text-xs font-black text-slate-200">** 5087</p>
+                    </div>
+                    <div class="space-y-1 text-right">
+                        <p class="text-[10px] uppercase font-bold tracking-widest">CVC</p>
+                        <p class="text-xs font-black text-slate-200">**** 3264</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-bento p-8 space-y-8">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Monthly Index</h3>
+                    <span class="text-[9px] px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded font-bold" x-text="getHealthStatus().message"></span>
+                </div>
+                
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                        <span class="text-[9px] font-bold text-emerald-400 uppercase">Inflow</span>
+                        <span class="font-bold text-sm" x-text="formatRupiah(monthlyIncome)"></span>
+                    </div>
+                    <div class="flex justify-between items-center p-4 rounded-xl bg-rose-500/5 border border-rose-500/10">
+                        <span class="text-[9px] font-bold text-rose-400 uppercase">Outflow</span>
+                        <span class="font-bold text-sm" x-text="formatRupiah(ruleData.needsValue + ruleData.wantsValue)"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-6 pt-4 border-t border-white/5">
+                    <template x-for="item in [
+                        {label: 'Essential', target: 50, val: ruleData.needsPercent, color: 'bg-indigo-500'},
+                        {label: 'Lifestyle', target: 30, val: ruleData.wantsPercent, color: 'bg-indigo-300'},
+                        {label: 'Reserve', target: 20, val: ruleData.savingsPercent, color: 'bg-emerald-500'}
+                    ]">
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-[9px] font-black uppercase tracking-wider">
+                                <span class="text-slate-500" x-text="item.label"></span>
+                                <span :class="item.val > item.target ? 'text-rose-400' : 'text-indigo-300'" x-text="item.val + '%'"></span>
+                            </div>
+                            <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full transition-all duration-1000" :class="item.color" :style="'width:' + Math.min(item.val, 100) + '%'"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </aside>
+
+        <main class="lg:col-span-5 space-y-8">
+            <div class="glass-bento p-10 bg-[#16161a] relative overflow-hidden group">
+                <p class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-6">Create System Entry</p>
+                
+                <div class="flex gap-4 mb-8">
+                    <div class="flex bg-black/30 p-1 rounded-xl w-fit border border-white/5">
+                        <button @click="transactionType = 'income'" 
+                            :class="transactionType === 'income' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/40' : 'text-slate-500'" 
+                            class="px-5 py-2 rounded-lg text-[9px] font-bold uppercase transition-all">Income</button>
+                        <button @click="transactionType = 'expense'" 
+                            :class="transactionType === 'expense' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/40' : 'text-slate-500'" 
+                            class="px-5 py-2 rounded-lg text-[9px] font-bold uppercase transition-all">Expense</button>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button @click="showCalc = !showCalc" class="p-4 glass-bento hover:bg-white/5 transition-all text-xs">🧮</button>
+                        <button @click="showAddCategory = !showAddCategory" 
+                            class="px-5 py-3 bg-white text-black rounded-xl font-black text-[9px] uppercase tracking-[0.2em] hover:bg-indigo-400 hover:text-white transition-all shadow-xl">
+                            Add Category
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative mb-10 group/amount">
+                    <input type="text" x-model="displayAmount" @input="handleFormat($el)" placeholder="0" 
+                        class="!bg-transparent !border-none !p-0 text-7xl font-black w-full focus:ring-0 placeholder-white/5 tracking-tighter text-white">
+                    <span class="absolute right-0 bottom-4 font-black text-indigo-500/30 text-xs tracking-[0.5em]">IDR</span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <div x-show="transactionType === 'expense'" class="flex-grow">
+                        <select x-model="newCategory" class="w-full !bg-white/5 !border-white/10 p-4 rounded-xl outline-none font-bold text-xs uppercase tracking-widest text-indigo-300">
+                            <template x-for="cat in Object.keys(budgets)" :key="cat">
+                                <option :value="cat" x-text="cat" class="bg-[#0b0e14]"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div x-show="transactionType === 'income'" class="flex-grow">
+                        <input type="text" x-model="incomeSource" placeholder="SOURCE..." 
+                            class="w-full !bg-white/5 !border-white/10 p-4 rounded-xl outline-none font-bold text-xs uppercase tracking-widest">
+                    </div>
+                    <button @click="addTransaction()" 
+                        class="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center gap-2">
+                        Execute Entry
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <template x-for="(data, cat) in budgets" :key="cat">
+                    <div class="glass-bento p-6">
+                        <div class="flex justify-between items-start mb-5">
+                            <div class="flex items-center gap-4">
+                                <div class="w-11 h-11 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-indigo-400 font-bold text-sm" x-text="cat.charAt(0)"></div>
+                                <div>
+                                    <h4 class="font-extrabold text-xs uppercase tracking-wider" x-text="cat"></h4>
+                                    <span class="text-[8px] font-black text-indigo-500 uppercase tracking-widest" x-text="data.type"></span>
+                                </div>
+                            </div>
+                            <button @click="deleteCategory(cat)" class="text-rose-500/30 hover:text-rose-500 transition-colors text-xs">✕</button>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between text-[9px] font-black uppercase tracking-widest">
+                                <span class="text-slate-500">Utilization</span>
+                                <span :class="getPercent(cat) > 100 ? 'text-rose-400' : 'text-indigo-300'" x-text="getPercent(cat) + '%'"></span >
+                            </div>
+                            <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full transition-all duration-700" :class="getPercent(cat) > 100 ? 'bg-rose-500' : 'bg-indigo-500'" :style="'width:' + Math.min(getPercent(cat), 100) + '%'"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center text-[9px] font-black tracking-tighter">
+                            <span class="text-slate-200" x-text="formatRupiah(getSpending(cat))"></span>
+                            <span class="text-indigo-500/50" x-text="'LIMIT ' + formatRupiah(data.limit)"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </main>
+
+        <aside class="lg:col-span-3">
+            <div class="glass-bento flex flex-col h-[calc(100vh-200px)] sticky top-12">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                    <h3 class="font-black text-[10px] uppercase tracking-[0.3em] text-indigo-400">Entry Registry</h3>
+                    <button @click="clearHistory()" class="text-[8px] text-rose-500/50 hover:text-rose-500 font-black tracking-widest">WIPE ALL</button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
+                    <template x-for="t in transactions">
+                        <div class="p-4 bg-white/[0.02] rounded-2xl border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <div :class="t.type === 'income' ? 'text-emerald-400' : 'text-indigo-400'" class="text-lg font-black" x-text="t.type === 'income' ? '⇟' : '⇞'"></div>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase text-slate-100" x-text="t.category"></p>
+                                        <p class="text-[8px] text-slate-500 font-bold" x-text="t.date"></p>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] font-black tracking-tighter" :class="t.type === 'income' ? 'text-emerald-400' : 'text-slate-100'" x-text="formatRupiah(t.amount)"></p>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="transactions.length === 0" class="flex flex-col items-center justify-center py-24 text-slate-800">
+                        <p class="text-[8px] font-black uppercase tracking-[0.5em]">idle state</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="fixed top-24 right-12 z-[110] space-y-2">
+        <template x-for="note in notifications" :key="note.id">
+            <div x-transition class="glass-bento px-6 py-3 flex items-center gap-3 border border-indigo-500/20 text-indigo-300">
+                <div class="text-xs">✦</div>
+                <p class="text-[9px] font-extrabold uppercase tracking-[0.2em]" x-text="note.msg"></p>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="showCalc" x-cloak class="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+        <div @click="showCalc = false" class="absolute inset-0"></div>
+        <div x-transition.scale.95 class="relative glass-bento p-8 w-full max-w-[350px] shadow-[0_0_50px_rgba(99,102,241,0.1)]">
+            <div class="bg-black/40 p-6 rounded-2xl mb-6 text-right border border-white/5">
+                <p class="text-[10px] font-black text-indigo-400 mb-2 uppercase tracking-widest" x-text="calcExpression || 'Ready'"></p>
+                <p class="text-4xl font-black text-white" x-text="calcDisplay"></p>
+            </div>
+            <div class="grid grid-cols-4 gap-3">
+                <button @click="calcClear()" class="h-14 rounded-xl bg-rose-500/20 text-rose-500 font-black col-span-2">C</button>
+                <button @click="calcOp('/')" class="h-14 rounded-xl bg-white/5 font-black">÷</button>
+                <button @click="calcOp('*')" class="h-14 rounded-xl bg-white/5 font-black">×</button>
+                <template x-for="n in ['7','8','9']"><button @click="calcNum(n)" class="h-14 rounded-xl bg-white/5 font-black" x-text="n"></button></template>
+                <button @click="calcOp('-')" class="h-14 rounded-xl bg-white/5 font-black">-</button>
+                <template x-for="n in ['4','5','6']"><button @click="calcNum(n)" class="h-14 rounded-xl bg-white/5 font-black" x-text="n"></button></template>
+                <button @click="calcOp('+')" class="h-14 rounded-xl bg-white/5 font-black">+</button>
+                <template x-for="n in ['1','2','3']"><button @click="calcNum(n)" class="h-14 rounded-xl bg-white/5 font-black" x-text="n"></button></template>
+                <button @click="calcSolve()" class="h-14 rounded-xl bg-indigo-600 text-white font-black row-span-2">=</button>
+                <button @click="calcNum('0')" class="h-14 rounded-xl bg-white/5 font-black col-span-2">0</button>
+                <button @click="calcNum('.')" class="h-14 rounded-xl bg-white/5 font-black">.</button>
+            </div>
+            <button @click="useCalcResult()" class="w-full mt-6 bg-white text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">Apply Result</button>
+        </div>
+    </div>
+
+    <div x-show="showAddCategory" x-cloak class="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/95 backdrop-blur-xl">
+        <div @click="showAddCategory = false" class="absolute inset-0"></div>
+        <div class="relative glass-bento p-10 w-full max-w-[450px]">
+            <h3 class="text-xl font-black mb-8 uppercase tracking-widest text-center">Synchronize Category</h3>
+            <div class="space-y-6">
+                <input type="text" x-model="newCatName" placeholder="NAME (E.G. TRAVEL)" class="w-full p-4 rounded-xl font-bold uppercase text-xs">
+                <input type="number" x-model.number="newCatLimit" placeholder="IDR LIMIT AMOUNT" class="w-full p-4 rounded-xl font-bold text-xs">
+                <select x-model="newCatType" class="w-full p-4 rounded-xl font-bold text-xs uppercase tracking-widest text-indigo-300">
+                    <option value="Needs" class="bg-black">NEEDS (50%)</option>
+                    <option value="Wants" class="bg-black">WANTS (30%)</option>
+                </select>
+                <div class="flex gap-4 pt-6">
+                    <button @click="showAddCategory = false" class="flex-1 p-4 rounded-xl font-black text-[10px] bg-white/5 uppercase transition-all">Cancel</button>
+                    <button @click="addCategory()" class="flex-1 p-4 rounded-xl font-black text-[10px] bg-indigo-600 text-white shadow-xl shadow-indigo-600/30 uppercase transition-all active:scale-95">Synchronize</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function moneyApp() {
+            return {
+                showCalc: false, showAddCategory: false, 
+                transactionType: 'expense',
+                newAmount: 0, displayAmount: '', newCategory: '', incomeSource: '',
+                notifications: [], calcDisplay: '0', calcExpression: '',
+                newCatName: '', newCatLimit: 0, newCatType: 'Needs',
+                budgets: {}, transactions: [],
+
+                init() {
+                    this.budgets = JSON.parse(localStorage.getItem('pro_budgets')) || {
+                        'Food & Dining 🍱': { limit: 2000000, type: 'Needs' },
+                        'Entertainment 🍿': { limit: 800000, type: 'Wants' },
+                        'Housing 🏠': { limit: 3000000, type: 'Needs' }
+                    };
+                    this.transactions = JSON.parse(localStorage.getItem('pro_history')) || [];
+                    this.newCategory = Object.keys(this.budgets)[0] || '';
+                },
+
+                addCategory() {
+                    if (!this.newCatName || this.newCatLimit <= 0) {
+                        this.pushNote("Check Entry!"); return;
+                    }
+                    this.budgets[this.newCatName] = { limit: parseInt(this.newCatLimit), type: this.newCatType };
+                    this.newCategory = this.newCatName;
+                    this.newCatName = ''; this.newCatLimit = 0; this.showAddCategory = false;
+                    this.saveData();
+                    this.pushNote("Category Synchronized");
+                },
+
+                deleteCategory(cat) {
+                    if(confirm(`Purge Category ${cat}?`)) {
+                        delete this.budgets[cat];
+                        this.newCategory = Object.keys(this.budgets)[0] || '';
+                        this.saveData();
+                        this.pushNote("System Cleaned");
+                    }
+                },
+
+                saveData() {
+                    localStorage.setItem('pro_budgets', JSON.stringify(this.budgets));
+                    localStorage.setItem('pro_history', JSON.stringify(this.transactions));
+                },
+
+                addTransaction() {
+                    if (this.newAmount <= 0) return;
+                    this.transactions.unshift({
+                        amount: this.newAmount,
+                        category: this.transactionType === 'income' ? (this.incomeSource || 'System Inflow') : this.newCategory,
+                        type: this.transactionType,
+                        date: new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'short'})
+                    });
+                    this.newAmount = 0; this.displayAmount = ''; this.incomeSource = '';
+                    this.saveData();
+                    this.pushNote("Entry Added");
+                },
+
+                get monthlyIncome() { return this.transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0); },
+                get ruleData() {
+                    const income = this.monthlyIncome || 0;
+                    const expenses = this.transactions.filter(t => t.type === 'expense');
+                    const needs = expenses.filter(t => this.budgets[t.category]?.type === 'Needs').reduce((a, b) => a + b.amount, 0);
+                    const wants = expenses.filter(t => this.budgets[t.category]?.type === 'Wants').reduce((a, b) => a + b.amount, 0);
+                    return {
+                        needsValue: needs, wantsValue: wants,
+                        needsPercent: income > 0 ? Math.round((needs / income) * 100) : 0,
+                        wantsPercent: income > 0 ? Math.round((wants / income) * 100) : 0,
+                        savingsPercent: income > 0 ? Math.max(0, Math.round(((income - (needs + wants)) / income) * 100)) : 0
+                    };
+                },
+                getHealthStatus() {
+                    const d = this.ruleData;
+                    if (this.transactions.length === 0) return { message: 'IDLE' };
+                    if (d.needsPercent > 50) return { message: 'CRITICAL' };
+                    return { message: 'STABLE' };
+                },
+                formatRupiah(num) { return 'Rp' + new Intl.NumberFormat('id-ID').format(num); },
+                handleFormat(el) {
+                    let val = el.value.replace(/[^0-9]/g, '');
+                    this.newAmount = parseInt(val) || 0;
+                    this.displayAmount = val ? new Intl.NumberFormat('id-ID').format(val) : '';
+                },
+                get totalSaldo() { return this.transactions.reduce((acc, curr) => curr.type === 'income' ? acc + curr.amount : acc - curr.amount, 0); },
+                getSpending(cat) { return this.transactions.filter(t => t.type === 'expense' && t.category === cat).reduce((a, b) => a + b.amount, 0); },
+                getPercent(cat) { return Math.round((this.getSpending(cat) / this.budgets[cat].limit) * 100) || 0; },
+                calcNum(n) { this.calcDisplay === '0' ? this.calcDisplay = n : this.calcDisplay += n; },
+                calcOp(op) { this.calcExpression = this.calcDisplay + ' ' + op + ' '; this.calcDisplay = '0'; },
+                calcClear() { this.calcDisplay = '0'; this.calcExpression = ''; },
+                calcSolve() { try { this.calcDisplay = String(Math.round(eval(this.calcExpression + this.calcDisplay))); this.calcExpression = ''; } catch { this.calcDisplay = 'Error'; } },
+                useCalcResult() { 
+                    let res = parseInt(this.calcDisplay);
+                    if (res > 0) { this.newAmount = res; this.displayAmount = new Intl.NumberFormat('id-ID').format(res); this.showCalc = false; }
+                },
+                clearHistory() { if(confirm('Purge Registry?')) { this.transactions = []; this.saveData(); } },
+                pushNote(msg) {
+                    const id = Date.now();
+                    this.notifications.push({ id, msg });
+                    setTimeout(() => this.notifications = this.notifications.filter(n => n.id !== id), 2500);
+                }
+            }
+        }
+    </script>
+    
+</body>
+</html>
