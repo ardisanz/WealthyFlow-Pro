@@ -244,6 +244,7 @@ _Dikirim dari WealthyFlow Pro_`;
     this.pushNote("Berhasil buka WhatsApp 🚀");
 },
 
+
         // =========================
 
         addCategory() {
