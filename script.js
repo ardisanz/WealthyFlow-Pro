@@ -1,17 +1,15 @@
-/* WEALTHYFLOW PRO - CORE LOGIC 
-   Paste kode ini di dalam tag <script> di file HTML lo
-*/
+/* WEALTHYFLOW PRO - CORE LOGIC */
 
 // --- PURE JS LOGIC ---
 const FinanceLogic = {
-    calculateAllocations: function(income, ratios) {
+    calculateAllocations: function (income, ratios) {
         return {
             Needs: Math.round(income * (ratios.Needs / 100)),
             Wants: Math.round(income * (ratios.Wants / 100)),
             Savings: Math.round(income * (ratios.Savings / 100))
         };
     },
-    evaluateSpending: function(expensesByType, allocations, ratios) {
+    evaluateSpending: function (expensesByType, allocations, ratios) {
         let suggestions = [];
         if (allocations.Wants > 0 && expensesByType.Wants > allocations.Wants * 1.2) {
             let percentExceeded = Math.round(((expensesByType.Wants - allocations.Wants) / allocations.Wants) * 100);
@@ -27,7 +25,7 @@ const FinanceLogic = {
         }
         return suggestions;
     },
-    processRecurring: function(transactions, recurringList) {
+    processRecurring: function (transactions, recurringList) {
         let now = new Date();
         let changed = false;
         recurringList.forEach(req => {
@@ -37,11 +35,10 @@ const FinanceLogic = {
                     id: Date.now() + Math.random(),
                     amount: req.amount,
                     category: req.name,
-                    type: req.type, // 'income' or 'expense'
+                    type: req.type,
                     date: nextDate.toISOString(),
                     isRecurring: true
                 });
-                // Increment month
                 nextDate.setMonth(nextDate.getMonth() + 1);
                 req.nextDate = nextDate.toISOString();
                 changed = true;
@@ -49,65 +46,76 @@ const FinanceLogic = {
         });
         return changed;
     },
-    calculateHealthScore: function(totalIncome, totalSavings, expensesByType) {
+    calculateHealthScore: function (totalIncome, totalSavings, expensesByType) {
         if (totalIncome === 0) return { score: 0, status: 'Boros', explanation: 'No income to analyze yet.' };
-        
         let score = 0;
-        
-        // 1. Saving Rate (Max 40 points) -> Ideal >= 20%
         let savingRate = totalSavings / totalIncome;
         score += Math.min(40, (savingRate / 0.2) * 40);
-        
-        // 2. Spending Behavior (Max 40 points) -> Ideal: Wants <= 30% of income
         let wantsRatio = expensesByType.Wants / totalIncome;
         if (wantsRatio <= 0.3) score += 40;
         else if (wantsRatio <= 0.5) score += 20;
-        else score += 0;
-
-        // 3. Consistency (Max 20 points) -> Simplification: Needs covered reliably
         let needsRatio = expensesByType.Needs / totalIncome;
         if (needsRatio <= 0.5) score += 20;
         else if (needsRatio <= 0.7) score += 10;
-        else score += 0;
-
         score = Math.round(score);
         if (score > 100) score = 100;
-        
         let status = score <= 40 ? 'Boros' : (score <= 70 ? 'Cukup' : 'Sehat');
         let explanation = "";
         if (savingRate < 0.1) explanation = "Your saving rate is dangerously low.";
         else if (wantsRatio > 0.4) explanation = "Your saving rate is okay, but spending on Wants is too high.";
         else explanation = "Great job! Your saving rate and spending are stable.";
-
         return { score, status, explanation };
     },
-    buildChartData: function(transactions, budgets) {
-        // Compute datasets for charts
+    buildChartData: function (transactions, budgets) {
         let pie = { Needs: 0, Wants: 0, Savings: 0 };
-        let line = []; // Balance over time
-        let weekly = {}; // Expenses per week
-        
+        let line = [];
+        let weekly = {};
         let balance = 0;
         let sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-        
         sorted.forEach(t => {
-            // Line
             if (t.type === 'income') balance += t.amount;
             else balance -= t.amount;
             line.push({ x: t.date, y: balance });
-            
-            // Pie & Weekly
             if (t.type === 'expense') {
                 let type = budgets[t.category]?.type || 'Needs';
                 if (pie[type] !== undefined) pie[type] += t.amount;
-                
                 let d = new Date(t.date);
                 let weekStr = d.getFullYear() + '-W' + Math.ceil(d.getDate() / 7);
                 weekly[weekStr] = (weekly[weekStr] || 0) + t.amount;
             }
         });
-        
         return { pie, line, weekly };
+    },
+    calculateProjection: function (currentBalance, recurringTransactions, days) {
+        let projectedBalance = currentBalance;
+        let now = new Date();
+        now.setHours(0, 0, 0, 0);
+        let end = new Date(now);
+        end.setDate(end.getDate() + days);
+        let willGoNegative = false;
+        let negativeDay = null;
+
+        // Copy array and instantiate dates
+        let recs = recurringTransactions.map(r => ({ ...r, nextDate: new Date(r.nextDate) }));
+
+        // Loop day by day
+        for (let d = new Date(now); d <= end; d.setDate(d.getDate() + 1)) {
+            recs.forEach(r => {
+                if (r.nextDate.getFullYear() === d.getFullYear() &&
+                    r.nextDate.getMonth() === d.getMonth() &&
+                    r.nextDate.getDate() === d.getDate()) {
+                    if (r.type === 'income') projectedBalance += r.amount;
+                    else projectedBalance -= r.amount;
+                    r.nextDate.setMonth(r.nextDate.getMonth() + 1);
+                }
+            });
+            if (projectedBalance < 0 && !willGoNegative) {
+                willGoNegative = true;
+                let diffTime = Math.abs(d - now);
+                negativeDay = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+        }
+        return { balance: projectedBalance, willGoNegative, negativeDay };
     }
 };
 
@@ -116,32 +124,34 @@ function moneyApp() {
         // UI States
         darkMode: false,
         showQuickAdd: false,
-        
+        isLoading: true,
+
         // Transaction Form
         transactionType: 'expense',
         newAmount: 0,
         displayAmount: '',
         newCategory: '',
         incomeSource: '',
-        
+        editingId: null, // For click-to-edit feature
+
         // Categories
         showAddCategory: false,
         newCatName: '',
         newCatType: 'Needs',
         budgets: {},
-        
+
         // Data
         transactions: [],
         recurringTransactions: [],
         notifications: [],
-        
+
         // Auto-Saving
         ratios: { Needs: 50, Wants: 30, Savings: 20 },
         showRatioSettings: false,
         tempRatios: { Needs: 50, Wants: 30, Savings: 20 },
         ratioError: '',
         suggestions: [],
-        
+
         // Recurring Form
         showRecurring: false,
         newRecName: '',
@@ -149,10 +159,11 @@ function moneyApp() {
         newRecDisplay: '',
         newRecType: 'expense',
         newRecDate: '',
-        
-        // Health Score
+
+        // Advanced
         healthScore: { score: 0, status: '...', explanation: '...' },
-        
+        projection: { days7: 0, days30: 0, warning: null },
+
         // Calculators & Charts
         showCalc: false,
         calcDisplay: '0',
@@ -161,45 +172,108 @@ function moneyApp() {
 
         // --- INITIALIZATION ---
         init() {
-            // Load LocalStorage
             this.darkMode = JSON.parse(localStorage.getItem('pro_dark')) || false;
             this.budgets = JSON.parse(localStorage.getItem('pro_budgets')) || {
-                'Makan':     { type: 'Needs' },
+                'Makan': { type: 'Needs' },
                 'Transport': { type: 'Needs' }
             };
             this.transactions = JSON.parse(localStorage.getItem('pro_history')) || [];
             this.recurringTransactions = JSON.parse(localStorage.getItem('pro_recurring')) || [];
             this.ratios = JSON.parse(localStorage.getItem('pro_ratios')) || { Needs: 50, Wants: 30, Savings: 20 };
-            
+
             this.tempRatios = { ...this.ratios };
-            this.newCategory  = Object.keys(this.budgets)[0] || '';
-            
-            // Process Recurring
+            this.newCategory = Object.keys(this.budgets)[0] || '';
+
             if (FinanceLogic.processRecurring(this.transactions, this.recurringTransactions)) {
                 this.saveData();
                 this.pushNote('Recurring transactions auto-processed!');
             }
-            
+
             this.updateAllDerived();
-            
+
             this.$watch('transactions', () => {
                 this.updateAllDerived();
                 this.$nextTick(() => this.renderCharts());
             });
-            
+            this.$watch('recurringTransactions', () => {
+                this.updateProjection();
+            });
             this.$watch('darkMode', (val) => {
                 localStorage.setItem('pro_dark', JSON.stringify(val));
-                this.renderCharts(); // Re-render to update text colors
-            });
-            
-            this.$nextTick(() => {
                 this.renderCharts();
             });
+
+            this.$nextTick(() => {
+                this.renderCharts();
+                setTimeout(() => { this.isLoading = false; }, 600); // Simulate loading skeleton
+            });
         },
-        
+
         updateAllDerived() {
             this.checkSuggestions();
             this.updateHealthScore();
+            this.updateProjection();
+        },
+
+        // --- DATA SAFETY ---
+        exportData() {
+            const data = {
+                transactions: this.transactions,
+                recurringTransactions: this.recurringTransactions,
+                budgets: this.budgets,
+                ratios: this.ratios,
+                darkMode: this.darkMode
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wealthyflow_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            this.pushNote('Data exported successfully!');
+        },
+        triggerImport() {
+            document.getElementById('importFile').click();
+        },
+        importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.transactions) this.transactions = data.transactions;
+                    if (data.recurringTransactions) this.recurringTransactions = data.recurringTransactions;
+                    if (data.budgets) this.budgets = data.budgets;
+                    if (data.ratios) this.ratios = data.ratios;
+                    if (data.darkMode !== undefined) this.darkMode = data.darkMode;
+                    this.saveData();
+                    this.updateAllDerived();
+                    this.renderCharts();
+                    this.pushNote('Data imported successfully!');
+                } catch (err) {
+                    alert('Invalid JSON format!');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        },
+
+        // --- CASHFLOW PROJECTION ---
+        updateProjection() {
+            let current = this.totalSaldo;
+            let proj7 = FinanceLogic.calculateProjection(current, this.recurringTransactions, 7);
+            let proj30 = FinanceLogic.calculateProjection(current, this.recurringTransactions, 30);
+
+            this.projection.days7 = proj7.balance;
+            this.projection.days30 = proj30.balance;
+
+            if (proj30.willGoNegative) {
+                this.projection.warning = `Warning: Your balance may go negative in ${proj30.negativeDay} days!`;
+            } else {
+                this.projection.warning = null;
+            }
         },
 
         // --- RATIO SETTINGS ---
@@ -220,7 +294,6 @@ function moneyApp() {
             this.renderCharts();
         },
 
-        // --- AUTO BUDGET SYSTEM ---
         getAutoBudgetLimit(type) {
             let allocations = FinanceLogic.calculateAllocations(this.monthlyIncome, this.ratios);
             return allocations[type] || 0;
@@ -229,7 +302,7 @@ function moneyApp() {
         getTypeSpending(type) {
             return this.transactions
                 .filter(t => t.type === 'expense' && this.budgets[t.category]?.type === type)
-                .reduce((s,t) => s + t.amount, 0);
+                .reduce((s, t) => s + t.amount, 0);
         },
 
         getTypePercent(type) {
@@ -262,30 +335,28 @@ function moneyApp() {
         ignoreSuggestion() {
             this.suggestions = [];
         },
-        
-        // --- HEALTH SCORE ---
+
         updateHealthScore() {
             let expensesByType = {
                 Needs: this.getTypeSpending('Needs'),
                 Wants: this.getTypeSpending('Wants'),
                 Savings: this.getTypeSpending('Savings')
             };
-            let totalSav = this.transactions.filter(t => t.type === 'expense' && this.budgets[t.category]?.type === 'Savings').reduce((s,t)=>s+t.amount, 0);
+            let totalSav = this.transactions.filter(t => t.type === 'expense' && this.budgets[t.category]?.type === 'Savings').reduce((s, t) => s + t.amount, 0);
             this.healthScore = FinanceLogic.calculateHealthScore(this.totalIncome, totalSav, expensesByType);
         },
 
-        // --- UI FORMATTING ---
         handleFormat(el, targetObj, targetProp) {
             let val = el.value.replace(/[^0-9]/g, '');
             let num = parseInt(val) || 0;
-            if(targetObj) targetObj[targetProp] = num;
+            if (targetObj) targetObj[targetProp] = num;
             else this.newAmount = num;
-            
+
             let formatted = val ? new Intl.NumberFormat('id-ID').format(num) : '';
             el.value = formatted;
-            if(!targetObj) this.displayAmount = formatted;
+            if (!targetObj) this.displayAmount = formatted;
         },
-        
+
         handleRecFormat(el) {
             let val = el.value.replace(/[^0-9]/g, '');
             this.newRecAmount = parseInt(val) || 0;
@@ -304,40 +375,69 @@ function moneyApp() {
                 });
             } catch { return iso; }
         },
-        
+
         getDueDateStatus(isoDate) {
             let diff = new Date(isoDate) - new Date();
             let days = diff / (1000 * 60 * 60 * 24);
-            if (days < 0) return 'text-rose-500 font-bold'; // Overdue
-            if (days <= 3) return 'text-amber-500 font-bold'; // Due soon
-            return 'text-slate-500'; // Upcoming
+            if (days < 0) return 'text-rose-500 font-bold';
+            if (days <= 3) return 'text-amber-500 font-bold';
+            return 'text-slate-500';
         },
 
         // --- TRANSACTION LOGIC ---
         addTransaction() {
             if (this.newAmount <= 0) return;
-            
-            this.transactions.unshift({
-                id: Date.now(),
-                amount:   this.newAmount,
-                category: this.transactionType === 'income'
-                    ? (this.incomeSource || 'Pemasukan')
-                    : this.newCategory,
-                type: this.transactionType,
-                date: new Date().toISOString(),
-                isRecurring: false
-            });
 
-            // Reset Form
-            this.newAmount     = 0;
+            if (this.editingId) {
+                // Update existing
+                let t = this.transactions.find(x => x.id === this.editingId);
+                if (t) {
+                    t.amount = this.newAmount;
+                    t.category = this.transactionType === 'income' ? (this.incomeSource || 'Pemasukan') : this.newCategory;
+                    t.type = this.transactionType;
+                }
+                this.editingId = null;
+                this.pushNote('Transaksi Diperbarui!');
+            } else {
+                // Add new
+                this.transactions.unshift({
+                    id: Date.now(),
+                    amount: this.newAmount,
+                    category: this.transactionType === 'income' ? (this.incomeSource || 'Pemasukan') : this.newCategory,
+                    type: this.transactionType,
+                    date: new Date().toISOString(),
+                    isRecurring: false
+                });
+                this.pushNote('Transaksi Berhasil!');
+            }
+
+            this.newAmount = 0;
             this.displayAmount = '';
-            this.incomeSource  = '';
-            this.showQuickAdd  = false;
-            
+            this.incomeSource = '';
+            this.showQuickAdd = false;
+
             this.saveData();
-            this.pushNote('Transaksi Berhasil!');
         },
-        
+
+        editTransaction(t) {
+            this.editingId = t.id;
+            this.transactionType = t.type;
+            this.newAmount = t.amount;
+            this.displayAmount = new Intl.NumberFormat('id-ID').format(t.amount);
+            if (t.type === 'income') {
+                this.incomeSource = t.category;
+            } else {
+                this.newCategory = t.category;
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll up to form
+        },
+
+        deleteTransaction(id) {
+            this.transactions = this.transactions.filter(t => t.id !== id);
+            this.saveData();
+            this.pushNote('Transaksi Dihapus!');
+        },
+
         addRecurring() {
             if (this.newRecAmount <= 0 || !this.newRecName || !this.newRecDate) return;
             this.recurringTransactions.push({
@@ -353,25 +453,16 @@ function moneyApp() {
             this.newRecAmount = 0;
             this.newRecDisplay = '';
         },
-        
+
         deleteRecurring(id) {
             this.recurringTransactions = this.recurringTransactions.filter(r => r.id !== id);
             this.saveData();
         },
 
-        // --- CORE FINANCE CALCULATIONS (GETTERS) ---
-        get totalIncome() {
-            return this.transactions.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-        },
-        
-        get totalExpense() {
-            return this.transactions.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-        },
-        
-        get totalSaldo()  { 
-            return this.totalIncome - this.totalExpense; 
-        },
-        
+        // --- GETTERS ---
+        get totalIncome() { return this.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0); },
+        get totalExpense() { return this.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0); },
+        get totalSaldo() { return this.totalIncome - this.totalExpense; },
         get monthlyIncome() {
             const now = new Date();
             return this.transactions
@@ -379,14 +470,13 @@ function moneyApp() {
                     let d = new Date(t.date);
                     return t.type === 'income' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
                 })
-                .reduce((s,t) => s + t.amount, 0);
+                .reduce((s, t) => s + t.amount, 0);
         },
 
-        // --- CATEGORY MANAGEMENT ---
         addCategory() {
             if (!this.newCatName.trim()) return;
             this.budgets[this.newCatName.trim()] = { type: this.newCatType };
-            this.budgets = { ...this.budgets }; // Trigger reaktivitas
+            this.budgets = { ...this.budgets };
             this.saveData();
             this.showAddCategory = false;
             this.newCatName = '';
@@ -400,22 +490,21 @@ function moneyApp() {
                 this.saveData();
             }
         },
-        
+
         getCategoryIcon(catName) {
             let n = catName.toLowerCase();
-            if(n.includes('makan') || n.includes('food')) return '🍔';
-            if(n.includes('transport') || n.includes('mobil')) return '🚌';
-            if(n.includes('bill') || n.includes('tagihan') || n.includes('listrik')) return '🧾';
-            if(n.includes('hiburan') || n.includes('main') || n.includes('netflix')) return '🎬';
-            if(n.includes('gaji') || n.includes('income')) return '💰';
+            if (n.includes('makan') || n.includes('food')) return '🍔';
+            if (n.includes('transport') || n.includes('mobil')) return '🚌';
+            if (n.includes('bill') || n.includes('tagihan') || n.includes('listrik')) return '🧾';
+            if (n.includes('hiburan') || n.includes('main') || n.includes('netflix')) return '🎬';
+            if (n.includes('gaji') || n.includes('income')) return '💰';
             return '🏷️';
         },
 
-        // --- DATA PERSISTENCE ---
         saveData() {
-            localStorage.setItem('pro_budgets',  JSON.stringify(this.budgets));
-            localStorage.setItem('pro_history',  JSON.stringify(this.transactions));
-            localStorage.setItem('pro_ratios',   JSON.stringify(this.ratios));
+            localStorage.setItem('pro_budgets', JSON.stringify(this.budgets));
+            localStorage.setItem('pro_history', JSON.stringify(this.transactions));
+            localStorage.setItem('pro_ratios', JSON.stringify(this.ratios));
             localStorage.setItem('pro_recurring', JSON.stringify(this.recurringTransactions));
         },
 
@@ -426,20 +515,17 @@ function moneyApp() {
             }
         },
 
-        // --- NOTIFICATIONS ---
         pushNote(msg) {
             const id = Date.now();
             this.notifications.push({ id, msg });
-            setTimeout(() => { 
-                this.notifications = this.notifications.filter(n => n.id !== id); 
+            setTimeout(() => {
+                this.notifications = this.notifications.filter(n => n.id !== id);
             }, 2500);
         },
 
-        // --- CHART ENGINE ---
         renderCharts() {
             let data = FinanceLogic.buildChartData(this.transactions, this.budgets);
-            
-            // 1. Pie Chart
+
             const ctxPie = document.getElementById('pieChart');
             if (ctxPie) {
                 if (this.charts.pie) this.charts.pie.destroy();
@@ -457,8 +543,7 @@ function moneyApp() {
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: this.darkMode ? '#cbd5e1' : '#475569' } } } }
                 });
             }
-            
-            // 2. Line Chart (Balance over time)
+
             const ctxLine = document.getElementById('lineChart');
             if (ctxLine && data.line.length > 0) {
                 if (this.charts.line) this.charts.line.destroy();
@@ -478,8 +563,7 @@ function moneyApp() {
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: this.darkMode ? '#94a3b8' : '#64748b' } }, y: { ticks: { color: this.darkMode ? '#94a3b8' : '#64748b' } } } }
                 });
             }
-            
-            // 3. Weekly Trend (Bar)
+
             const ctxBar = document.getElementById('barChart');
             if (ctxBar) {
                 if (this.charts.bar) this.charts.bar.destroy();
@@ -501,18 +585,17 @@ function moneyApp() {
             }
         },
 
-        // --- CALCULATOR ENGINE ---
         calcNum(n) {
             if (this.calcDisplay === '0') this.calcDisplay = n;
             else this.calcDisplay += n;
         },
-        calcOp(op) { 
-            this.calcExpression = this.calcDisplay + op; 
-            this.calcDisplay = '0'; 
+        calcOp(op) {
+            this.calcExpression = this.calcDisplay + op;
+            this.calcDisplay = '0';
         },
-        calcClear() { 
-            this.calcDisplay = '0'; 
-            this.calcExpression = ''; 
+        calcClear() {
+            this.calcDisplay = '0';
+            this.calcExpression = '';
         },
         calcSolve() {
             try {
