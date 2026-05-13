@@ -1,119 +1,180 @@
-/* ===== BASE ===== */
-body { 
-    font-family: 'Plus Jakarta Sans', sans-serif; 
-    background: linear-gradient(135deg, #f8fafc, #eef2ff);
-    color: #1e293b; 
+/* WEALTHYFLOW PRO - PREMIUM STYLING */
+
+:root {
+    --primary: #BF4646;
+    --primary-hover: #a33838;
+    --secondary: #7EACB5;
+    --accent: #EDDCC6;
+    --bg-main: #FFF4EA;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --card-border: rgba(255, 255, 255, 0.6);
+    --text-main: #1e293b;
+    --success: #BF4646;
+    --danger: #f43f5e;
+    --warning: #f59e0b;
 }
 
-/* Hide Alpine sebelum load */
-[x-cloak] { 
-    display: none !important; 
+.dark {
+    --bg-main: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.8);
+    --card-border: rgba(255, 255, 255, 0.1);
+    --text-main: #f8fafc;
 }
 
-/* ===== GLASS EFFECT (PREMIUM LOOK) ===== */
-.glass-card { 
-    background: rgba(255, 255, 255, 0.6); 
-    backdrop-filter: blur(16px); 
-    border: 1px solid rgba(255, 255, 255, 0.4); 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+/* 1. Global Reset & Smoothness */
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ===== BUTTON PRIMARY ===== */
-.btn-primary { 
-    background: linear-gradient(135deg, #4f46e5, #6366f1);
-    color: white;
-    transition: all 0.2s ease;
-    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.25);
+/* 2. Glassmorphism Effect */
+.glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--card-border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 15px 25px rgba(79, 70, 229, 0.35);
+.glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
 }
 
-.btn-primary:active {
-    transform: scale(0.95);
+/* 3. Typography & Gradients */
+.title-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.025em;
 }
 
-/* ===== INPUT FIELD ===== */
-.input-field { 
+/* 4. Custom Inputs */
+.input-field {
     width: 100%;
-    padding: 0.75rem 1rem;
-    background-color: rgba(241, 245, 249, 0.6);
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    background-color: #f1f5f9;
+    border: 2px solid transparent;
+    border-radius: 1rem;
     outline: none;
-    transition: all 0.25s ease;
     font-weight: 600;
+    transition: all 0.2s ease;
 }
 
 .input-field:focus {
-    background-color: white;
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-    transform: scale(1.01);
+    background-color: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
-/* ===== CARD HOVER EFFECT ===== */
-.card-hover {
-    transition: all 0.3s ease;
+/* Custom Dropdown Styling */
+.custom-select-container {
+    position: relative;
 }
 
-.card-hover:hover {
-    transform: translateY(-6px) scale(1.01);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+.custom-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
 }
 
-/* ===== CUSTOM SCROLLBAR ===== */
-.custom-scroll::-webkit-scrollbar { 
-    width: 5px; 
+.custom-options-list {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    z-index: 100;
+    overflow: hidden;
+    padding: 0.5rem;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb { 
-    background: linear-gradient(#c7d2fe, #6366f1); 
-    border-radius: 10px; 
+.custom-option {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-/* ===== MICRO ANIMATION ===== */
-.fade-in {
-    animation: fadeIn 0.4s ease;
+.custom-option:hover {
+    background-color: #f1f5f9;
+    color: var(--primary);
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
+.custom-option.selected {
+    background-color: rgba(191, 70, 70, 0.1);
+    color: var(--primary);
+}
+
+/* 5. Modern Buttons */
+.btn-action {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.btn-action:active {
+    transform: scale(0.96);
+}
+
+/* 6. Custom Scrollbar for Transactions */
+.custom-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* 7. Calculator Aesthetics */
+.calc-btn {
+    height: 3.5rem;
+    border-radius: 1.25rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    transition: all 0.15s ease;
+}
+
+.calc-btn:hover {
+    filter: brightness(0.95);
+    transform: translateY(-2px);
+}
+
+/* 8. Progress Bar Animation */
+.progress-bar-fill {
+    transition: width 1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* 9. Mobile Optimizations */
+@media (max-width: 640px) {
+    .glass-card {
+        border-radius: 1.25rem;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    
+    h1 {
+        font-size: 1.875rem;
     }
 }
-
-/* ===== SMOOTH TRANSITIONS GLOBAL ===== */
-* {
-    transition: background-color 0.2s ease, 
-                border-color 0.2s ease, 
-                transform 0.2s ease;
-}
-
-/* ===== RESPONSIVE POLISH ===== */
-@media (max-width: 768px) {
-    body {
-        padding: 0 10px;
-    }
-}
-
-/* ===== OPTIONAL: SOFT CARD SHADOW ===== */
-.soft-card {
-    background: white;
-    border-radius: 1.5rem;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.04);
-}
-
-/* ===== OPTIONAL: TEXT STYLE ===== */
-.title-gradient {
-    background: linear-gradient(135deg, #4f46e5, #6366f1);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}   
