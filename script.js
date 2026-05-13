@@ -46,25 +46,105 @@ const FinanceLogic = {
         });
         return changed;
     },
-    calculateHealthScore: function (totalIncome, totalSavings, expensesByType) {
-        if (totalIncome === 0) return { score: 0, status: 'Boros', explanation: 'No income to analyze yet.' };
+    calculateHealthScore: function (totalIncome, totalSavings, expensesByType, transactions) {
+        if (totalIncome === 0) return { score: 0, status: 'Boros', explanation: 'No income to analyze yet.', breakdown: { savingsRate: 0, wantsLevel: 'Low', consistency: 'Stable' } };
+        
         let score = 0;
         let savingRate = totalSavings / totalIncome;
         score += Math.min(40, (savingRate / 0.2) * 40);
+        
         let wantsRatio = expensesByType.Wants / totalIncome;
         if (wantsRatio <= 0.3) score += 40;
         else if (wantsRatio <= 0.5) score += 20;
+        
         let needsRatio = expensesByType.Needs / totalIncome;
         if (needsRatio <= 0.5) score += 20;
         else if (needsRatio <= 0.7) score += 10;
+        
         score = Math.round(score);
         if (score > 100) score = 100;
+        
         let status = score <= 40 ? 'Boros' : (score <= 70 ? 'Cukup' : 'Sehat');
         let explanation = "";
         if (savingRate < 0.1) explanation = "Your saving rate is dangerously low.";
         else if (wantsRatio > 0.4) explanation = "Your saving rate is okay, but spending on Wants is too high.";
         else explanation = "Great job! Your saving rate and spending are stable.";
-        return { score, status, explanation };
+
+        // Breakdown logic
+        let wantsLevel = wantsRatio > 0.5 ? 'High' : (wantsRatio > 0.3 ? 'Normal' : 'Low');
+        
+        // Consistency: Check last 3 months/weeks variance (simplified to last 10 tx)
+        let consistency = 'Stable';
+        if (transactions.length > 5) {
+            let last5 = transactions.filter(t => t.type === 'expense').slice(0, 5).map(t => t.amount);
+            let avg = last5.reduce((a, b) => a + b, 0) / last5.length;
+            let variance = last5.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / last5.length;
+            if (Math.sqrt(variance) > avg * 0.5) consistency = 'Unstable';
+        }
+
+        return { 
+            score, 
+            status, 
+            explanation, 
+            breakdown: { 
+                savingsRate: Math.round(savingRate * 100), 
+                wantsLevel, 
+                consistency 
+            } 
+        };
+    },
+    calculateSafeToSpend: function (currentBalance, recurringTransactions) {
+        const now = new Date();
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const daysLeft = Math.max(1, endOfMonth.getDate() - now.getDate());
+        
+        // Calculate upcoming bills for the rest of this month
+        let upcomingBills = recurringTransactions.reduce((total, r) => {
+            let nextDate = new Date(r.nextDate);
+            if (r.type === 'expense' && nextDate >= now && nextDate <= endOfMonth) {
+                return total + r.amount;
+            }
+            return total;
+        }, 0);
+
+        let safeAmount = (currentBalance - upcomingBills) / daysLeft;
+        let status = 'safe';
+        if (safeAmount < 0) status = 'risk';
+        else if (safeAmount < 100000) status = 'caution'; // Arbitrary threshold for "low"
+
+        return {
+            amount: Math.max(0, Math.round(safeAmount)),
+            daysLeft,
+            status
+        };
+    },
+    detectWarnings: function (currentBalance, projection, transactions) {
+        let alerts = [];
+        
+        if (projection.willGoNegative) {
+            alerts.push({
+                type: 'critical',
+                msg: `Balance may run out in ${projection.negativeDay} days!`
+            });
+        }
+
+        // Rapid balance drop (e.g., spent > 30% of balance in last 3 days)
+        if (transactions.length > 0) {
+            let threeDaysAgo = new Date();
+            threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+            let recentSpending = transactions
+                .filter(t => t.type === 'expense' && new Date(t.date) > threeDaysAgo)
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            if (recentSpending > currentBalance * 0.3 && currentBalance > 0) {
+                alerts.push({
+                    type: 'warning',
+                    msg: 'Rapid balance drop detected recently.'
+                });
+            }
+        }
+
+        return alerts;
     },
     buildChartData: function (transactions, budgets) {
         let pie = { Needs: 0, Wants: 0, Savings: 0 };
@@ -80,11 +160,19 @@ const FinanceLogic = {
                 let type = budgets[t.category]?.type || 'Needs';
                 if (pie[type] !== undefined) pie[type] += t.amount;
                 let d = new Date(t.date);
-                let weekStr = d.getFullYear() + '-W' + Math.ceil(d.getDate() / 7);
+                // Better weekly key: Year-WeekNumber
+                let weekStr = d.getFullYear() + '-W' + this.getWeekNumber(d);
                 weekly[weekStr] = (weekly[weekStr] || 0) + t.amount;
             }
         });
         return { pie, line, weekly };
+    },
+    getWeekNumber: function(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return weekNo;
     },
     calculateProjection: function (currentBalance, recurringTransactions, days) {
         let projectedBalance = currentBalance;
@@ -95,10 +183,8 @@ const FinanceLogic = {
         let willGoNegative = false;
         let negativeDay = null;
 
-        // Copy array and instantiate dates
         let recs = recurringTransactions.map(r => ({ ...r, nextDate: new Date(r.nextDate) }));
 
-        // Loop day by day
         for (let d = new Date(now); d <= end; d.setDate(d.getDate() + 1)) {
             recs.forEach(r => {
                 if (r.nextDate.getFullYear() === d.getFullYear() &&
@@ -118,6 +204,7 @@ const FinanceLogic = {
         return { balance: projectedBalance, willGoNegative, negativeDay };
     }
 };
+
 
 function moneyApp() {
     return {
@@ -160,14 +247,22 @@ function moneyApp() {
         newRecDate: '',
 
         // Advanced
-        healthScore: { score: 0, status: '...', explanation: '...' },
+        healthScore: { score: 0, status: '...', explanation: '...', breakdown: { savingsRate: 0, wantsLevel: '...', consistency: '...' } },
         projection: { days7: 0, days30: 0, warning: null },
+        alerts: [],
+        safeToSpend: { amount: 0, daysLeft: 0, status: 'safe' },
+
+        // Recurring & UX
+        confirmModal: { show: false, msg: '', onConfirm: null },
+        chartType: 'weekly', // 'weekly' or 'monthly'
+        categoryFilter: null,
 
         // Calculators & Charts
         showCalc: false,
         calcDisplay: '0',
         calcExpression: '',
         charts: { pie: null, line: null, bar: null },
+
 
         // --- INITIALIZATION ---
         init() {
@@ -210,7 +305,19 @@ function moneyApp() {
             this.checkSuggestions();
             this.updateHealthScore();
             this.updateProjection();
+            this.updateSafeToSpend();
+            this.updateAlerts();
         },
+
+        updateSafeToSpend() {
+            this.safeToSpend = FinanceLogic.calculateSafeToSpend(this.totalSaldo, this.recurringTransactions);
+        },
+
+        updateAlerts() {
+            let currentProj = FinanceLogic.calculateProjection(this.totalSaldo, this.recurringTransactions, 30);
+            this.alerts = FinanceLogic.detectWarnings(this.totalSaldo, currentProj, this.transactions);
+        },
+
 
         // --- DATA SAFETY ---
         exportData() {
@@ -338,8 +445,9 @@ function moneyApp() {
                 Savings: this.getTypeSpending('Savings')
             };
             let totalSav = this.transactions.filter(t => t.type === 'expense' && this.budgets[t.category]?.type === 'Savings').reduce((s, t) => s + t.amount, 0);
-            this.healthScore = FinanceLogic.calculateHealthScore(this.totalIncome, totalSav, expensesByType);
+            this.healthScore = FinanceLogic.calculateHealthScore(this.totalIncome, totalSav, expensesByType, this.transactions);
         },
+
 
         handleFormat(el, targetObj, targetProp) {
             let val = el.value.replace(/[^0-9]/g, '');
@@ -373,11 +481,25 @@ function moneyApp() {
 
         getDueDateStatus(isoDate) {
             let diff = new Date(isoDate) - new Date();
-            let days = diff / (1000 * 60 * 60 * 24);
+            let days = Math.ceil(diff / (1000 * 60 * 60 * 24));
             if (days < 0) return 'text-rose-500 font-bold';
             if (days <= 3) return 'text-amber-500 font-bold';
             return 'text-slate-500';
         },
+
+        getDueText(isoDate) {
+            let diff = new Date(isoDate) - new Date();
+            let days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            if (days < 0) return 'Overdue';
+            if (days === 0) return 'Due today';
+            if (days === 1) return 'Due tomorrow';
+            return `Due in ${days} days`;
+        },
+
+        get sortedRecurring() {
+            return [...this.recurringTransactions].sort((a, b) => new Date(a.nextDate) - new Date(b.nextDate));
+        },
+
 
         // --- TRANSACTION LOGIC ---
         addTransaction() {
@@ -428,10 +550,18 @@ function moneyApp() {
         },
 
         deleteTransaction(id) {
-            this.transactions = this.transactions.filter(t => t.id !== id);
-            this.saveData();
-            this.pushNote('Transaksi Dihapus!');
+            this.confirmModal = {
+                show: true,
+                msg: 'Are you sure you want to delete this transaction?',
+                onConfirm: () => {
+                    this.transactions = this.transactions.filter(t => t.id !== id);
+                    this.saveData();
+                    this.pushNote('Transaction Deleted!');
+                    this.confirmModal.show = false;
+                }
+            };
         },
+
 
         addRecurring() {
             if (this.newRecAmount <= 0 || !this.newRecName || !this.newRecDate) return;
@@ -503,12 +633,30 @@ function moneyApp() {
             localStorage.setItem('pro_recurring', JSON.stringify(this.recurringTransactions));
         },
 
-        clearHistory() {
-            if (confirm('Yakin mau hapus semua data riwayat?')) {
-                this.transactions = [];
-                this.saveData();
-            }
+        setCategoryFilter(cat) {
+            if (this.categoryFilter === cat) this.categoryFilter = null;
+            else this.categoryFilter = cat;
         },
+
+        get filteredTransactions() {
+            if (!this.categoryFilter) return this.transactions;
+            return this.transactions.filter(t => t.category === this.categoryFilter);
+        },
+
+
+        clearHistory() {
+            this.confirmModal = {
+                show: true,
+                msg: 'Clear all transaction history? This cannot be undone.',
+                onConfirm: () => {
+                    this.transactions = [];
+                    this.saveData();
+                    this.pushNote('History Cleared!');
+                    this.confirmModal.show = false;
+                }
+            };
+        },
+
 
         pushNote(msg) {
             const id = Date.now();
@@ -535,9 +683,24 @@ function moneyApp() {
                             borderColor: '#1e293b'
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            legend: { position: 'bottom', labels: { color: '#cbd5e1' } } 
+                        },
+                        onClick: (evt, elements) => {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                const label = this.charts.pie.data.labels[index];
+                                // Map Needs/Wants/Savings to a more useful filter or show category list
+                                this.pushNote(`Filter by type: ${label}`);
+                            }
+                        }
+                    }
                 });
             }
+
 
             const ctxLine = document.getElementById('lineChart');
             if (ctxLine && data.line.length > 0) {
