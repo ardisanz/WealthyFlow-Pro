@@ -122,7 +122,6 @@ const FinanceLogic = {
 function moneyApp() {
     return {
         // UI States
-        darkMode: false,
         showQuickAdd: false,
         isLoading: true,
 
@@ -172,10 +171,11 @@ function moneyApp() {
 
         // --- INITIALIZATION ---
         init() {
-            this.darkMode = JSON.parse(localStorage.getItem('pro_dark')) || false;
             this.budgets = JSON.parse(localStorage.getItem('pro_budgets')) || {
-                'Makan': { type: 'Needs' },
-                'Transport': { type: 'Needs' }
+                "Makan": { type: "Needs" },
+                "SPP": { type: "Needs" },
+                "Belanja": { type: "Wants" },
+                "Netflix": { type: "Wants" }
             };
             this.transactions = JSON.parse(localStorage.getItem('pro_history')) || [];
             this.recurringTransactions = JSON.parse(localStorage.getItem('pro_recurring')) || [];
@@ -198,10 +198,7 @@ function moneyApp() {
             this.$watch('recurringTransactions', () => {
                 this.updateProjection();
             });
-            this.$watch('darkMode', (val) => {
-                localStorage.setItem('pro_dark', JSON.stringify(val));
-                this.renderCharts();
-            });
+
 
             this.$nextTick(() => {
                 this.renderCharts();
@@ -221,8 +218,7 @@ function moneyApp() {
                 transactions: this.transactions,
                 recurringTransactions: this.recurringTransactions,
                 budgets: this.budgets,
-                ratios: this.ratios,
-                darkMode: this.darkMode
+                ratios: this.ratios
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -247,7 +243,6 @@ function moneyApp() {
                     if (data.recurringTransactions) this.recurringTransactions = data.recurringTransactions;
                     if (data.budgets) this.budgets = data.budgets;
                     if (data.ratios) this.ratios = data.ratios;
-                    if (data.darkMode !== undefined) this.darkMode = data.darkMode;
                     this.saveData();
                     this.updateAllDerived();
                     this.renderCharts();
@@ -537,10 +532,10 @@ function moneyApp() {
                             data: [data.pie.Needs, data.pie.Wants, data.pie.Savings],
                             backgroundColor: ['#7EACB5', '#fbbf24', '#34d399'],
                             borderWidth: 2,
-                            borderColor: this.darkMode ? '#1e293b' : '#ffffff'
+                            borderColor: '#1e293b'
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: this.darkMode ? '#cbd5e1' : '#475569' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
                 });
             }
 
@@ -560,7 +555,7 @@ function moneyApp() {
                             backgroundColor: 'rgba(191, 70, 70, 0.1)'
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: this.darkMode ? '#94a3b8' : '#64748b' } }, y: { ticks: { color: this.darkMode ? '#94a3b8' : '#64748b' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#94a3b8' } } } }
                 });
             }
 
@@ -580,7 +575,7 @@ function moneyApp() {
                             borderRadius: 4
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: this.darkMode ? '#94a3b8' : '#64748b' } }, y: { ticks: { color: this.darkMode ? '#94a3b8' : '#64748b' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#94a3b8' } } } }
                 });
             }
         },
