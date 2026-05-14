@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WealthyFlow Pro - Strategic Budgeting</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -45,6 +48,23 @@
                 <p class="text-sm font-bold text-slate-700 dark:text-slate-200" x-text="note.msg"></p>
             </div>
         </template>
+    </div>
+
+    <!-- PWA Install Prompt -->
+    <div x-show="showInstallPrompt" x-cloak x-transition
+        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm bg-indigo-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4">
+        <div class="flex-1">
+            <p class="font-bold text-sm">Install WealthyFlow PRO</p>
+            <p class="text-xs opacity-80">Get a better experience, offline support, and app-like feel.</p>
+        </div>
+        <button @click="installPWA()" class="bg-white text-indigo-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition shadow-md whitespace-nowrap">Install</button>
+        <button @click="showInstallPrompt = false" class="text-white/60 hover:text-white p-1">✕</button>
+    </div>
+
+    <!-- Offline Banner -->
+    <div x-show="!isOnline" x-cloak x-transition
+        class="fixed top-0 left-0 right-0 z-[120] bg-rose-500 text-white text-center py-1 text-xs font-bold tracking-widest uppercase shadow-md">
+        ⚠️ You are offline
     </div>
 
     <!-- Alerts Banner -->

@@ -211,6 +211,11 @@ function moneyApp() {
         // UI States
         showQuickAdd: false,
         isLoading: true,
+        
+        // PWA States
+        showInstallPrompt: false,
+        deferredPrompt: null,
+        isOnline: navigator.onLine,
 
         // Transaction Form
         transactionType: 'expense',
@@ -283,6 +288,29 @@ function moneyApp() {
                 this.saveData();
                 this.pushNote('Recurring transactions auto-processed!');
             }
+
+            // PWA Setup
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.register("/sw.js").then(() => {
+                    console.log("Service Worker Registered");
+                }).catch(err => {
+                    console.log("Service Worker Registration Failed", err);
+                });
+            }
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                this.deferredPrompt = e;
+                this.showInstallPrompt = true;
+            });
+
+            window.addEventListener('online', () => {
+                this.isOnline = true;
+                this.pushNote('You are back online');
+            });
+            window.addEventListener('offline', () => {
+                this.isOnline = false;
+            });
 
             this.updateAllDerived();
 
@@ -664,6 +692,21 @@ function moneyApp() {
             setTimeout(() => {
                 this.notifications = this.notifications.filter(n => n.id !== id);
             }, 2500);
+        },
+
+        installPWA() {
+            if (this.deferredPrompt) {
+                this.deferredPrompt.prompt();
+                this.deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    this.deferredPrompt = null;
+                    this.showInstallPrompt = false;
+                });
+            }
         },
 
         renderCharts() {
