@@ -128,6 +128,36 @@ body {
     }
 }
 
+/* Safe Area & Touch Optimizations */
+.safe-pt {
+    padding-top: env(safe-area-inset-top);
+}
+.safe-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+.touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.nav-item-active {
+    color: var(--primary);
+}
+.nav-item-inactive {
+    color: #94a3b8; /* slate-400 */
+}
+.nav-item-inactive:hover {
+    color: var(--primary);
+}
+.mb-safe-nav {
+    margin-bottom: calc(env(safe-area-inset-bottom) + 80px);
+}
+.bottom-safe-nav {
+    bottom: calc(env(safe-area-inset-bottom) + 80px);
+}
+
 /* 10. Custom Animations */
 @keyframes shake {
     0%, 100% { transform: translateX(0); }

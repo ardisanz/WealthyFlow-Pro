@@ -3,9 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>WealthyFlow Pro - Strategic Budgeting</title>
-    
+
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
 
@@ -52,12 +52,13 @@
 
     <!-- PWA Install Prompt -->
     <div x-show="showInstallPrompt" x-cloak x-transition
-        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm bg-indigo-600 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4">
+        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm bg-indigo-600 text-white p-4 rounded-2xl shadow-2xl flex md:hidden items-center justify-between gap-4">
         <div class="flex-1">
             <p class="font-bold text-sm">Install WealthyFlow PRO</p>
             <p class="text-xs opacity-80">Get a better experience, offline support, and app-like feel.</p>
         </div>
-        <button @click="installPWA()" class="bg-white text-indigo-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition shadow-md whitespace-nowrap">Install</button>
+        <button @click="installPWA()"
+            class="bg-white text-indigo-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition shadow-md whitespace-nowrap">Install</button>
         <button @click="showInstallPrompt = false" class="text-white/60 hover:text-white p-1">✕</button>
     </div>
 
@@ -70,15 +71,15 @@
     <!-- Alerts Banner -->
     <div class="fixed top-24 left-1/2 -translate-x-1/2 z-[80] w-[90%] max-w-lg space-y-2 pointer-events-auto">
         <template x-for="alert in alerts" :key="alert.msg">
-            <div x-transition
-                :class="alert.type === 'critical' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'"
+            <div x-transition :class="alert.type === 'critical' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'"
                 class="p-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 backdrop-blur-md">
                 <span class="text-xl" x-text="alert.type === 'critical' ? '🚨' : '⚠️'"></span>
                 <div class="flex-1">
                     <p class="text-xs font-black uppercase tracking-widest opacity-80" x-text="alert.type"></p>
                     <p class="text-sm font-bold" x-text="alert.msg"></p>
                 </div>
-                <button @click="alerts = alerts.filter(a => a.msg !== alert.msg)" class="text-white/60 hover:text-white">✕</button>
+                <button @click="alerts = alerts.filter(a => a.msg !== alert.msg)"
+                    class="text-white/60 hover:text-white">✕</button>
             </div>
         </template>
     </div>
@@ -88,7 +89,9 @@
         class="fixed inset-0 bg-black/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
         <div @click.away="confirmModal.show = false" x-transition
             class="bg-white dark:bg-slate-900 w-full max-w-xs rounded-[2rem] p-8 text-center shadow-2xl">
-            <div class="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">❓</div>
+            <div
+                class="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                ❓</div>
             <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-2">Are you sure?</h3>
             <p class="text-xs text-slate-500 dark:text-slate-400 mb-8" x-text="confirmModal.msg"></p>
             <div class="flex gap-3">
@@ -102,15 +105,15 @@
 
 
     <!-- Floating Buttons -->
-    <div class="fixed bottom-8 right-8 z-50 flex flex-col gap-4">
+    <div class="fixed bottom-[calc(env(safe-area-inset-bottom)+80px)] md:bottom-8 right-4 md:right-8 z-50 flex flex-col gap-4">
         <button @click="showQuickAdd = true"
-            class="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-center text-3xl hover:scale-110 transition pb-1">
+            class="w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-center text-3xl btn-action pb-1 touch-target">
             +
         </button>
         <button @click="sendToWhatsApp()"
-            class="w-14 h-14 bg-[#7EACB5] text-white rounded-2xl shadow-lg flex items-center justify-center text-xl hover:scale-110 transition">📝</button>
+            class="w-14 h-14 bg-[#7EACB5] text-white rounded-2xl shadow-lg flex items-center justify-center text-xl btn-action touch-target">📝</button>
         <button @click="showCalc = !showCalc"
-            class="w-14 h-14 bg-[#BF4646] text-white rounded-2xl shadow-lg flex items-center justify-center text-xl hover:scale-110 transition">
+            class="w-14 h-14 bg-[#BF4646] text-white rounded-2xl shadow-lg flex items-center justify-center text-xl btn-action touch-target">
             <span x-show="!showCalc">🧮</span><span x-show="showCalc">✕</span>
         </button>
     </div>
@@ -178,11 +181,33 @@
         </div>
     </div>
 
+    <!-- Mobile Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-[60] md:hidden safe-pb">
+        <div class="flex justify-around items-center h-16 px-2">
+            <button @click="window.scrollTo({ top: 0, behavior: 'smooth' })" class="flex flex-col items-center justify-center w-full h-full space-y-1 nav-item-active touch-target btn-action">
+                <span class="text-xl">📊</span>
+                <span class="text-[10px] font-bold">Dashboard</span>
+            </button>
+            <button @click="window.scrollTo({ top: document.querySelector('.glass-card.h-\\[600px\\]') ? document.querySelector('.glass-card.h-\\[600px\\]').offsetTop - 100 : 0, behavior: 'smooth' })" class="flex flex-col items-center justify-center w-full h-full space-y-1 nav-item-inactive touch-target btn-action">
+                <span class="text-xl">💳</span>
+                <span class="text-[10px] font-bold">Transaksi</span>
+            </button>
+            <button @click="window.scrollTo({ top: document.getElementById('pieChart') ? document.getElementById('pieChart').offsetTop - 200 : 0, behavior: 'smooth' })" class="flex flex-col items-center justify-center w-full h-full space-y-1 nav-item-inactive touch-target btn-action">
+                <span class="text-xl">📈</span>
+                <span class="text-[10px] font-bold">Analitik</span>
+            </button>
+            <button @click="showRatioSettings = !showRatioSettings; window.scrollTo({ top: 0, behavior: 'smooth' })" class="flex flex-col items-center justify-center w-full h-full space-y-1 nav-item-inactive touch-target btn-action">
+                <span class="text-xl">⚙️</span>
+                <span class="text-[10px] font-bold">Setelan</span>
+            </button>
+        </div>
+    </nav>
+
     <!-- Main Container -->
-    <div class="max-w-7xl mx-auto px-4 py-8 md:py-12">
+    <div class="max-w-7xl mx-auto px-4 py-8 md:py-12 mb-[calc(env(safe-area-inset-bottom)+80px)] md:mb-0">
 
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+        <header class="sticky top-0 z-40 bg-slate-50/90 dark:bg-[#0f172a]/90 backdrop-blur-md safe-pt -mx-4 px-4 pb-4 pt-4 md:pt-0 md:mx-0 md:px-0 md:bg-transparent md:dark:bg-transparent md:relative flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b border-slate-200 dark:border-slate-800 md:border-none">
             <div class="flex flex-col sm:flex-row items-center gap-6">
                 <div class="text-center sm:text-left">
                     <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">WealthyFlow <span
@@ -239,7 +264,8 @@
                 <div class="absolute -right-10 -top-10 w-40 h-40 opacity-10 bg-indigo-500 rounded-full blur-3xl"></div>
                 <div class="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
                     <div class="text-center md:text-left">
-                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Safe to Spend Today</p>
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Safe to Spend Today
+                        </p>
                         <h2 class="text-4xl md:text-5xl font-black text-slate-900 dark:text-white"
                             x-text="formatRupiah(safeToSpend.amount)"></h2>
                         <div class="flex items-center gap-2 mt-2 justify-center md:justify-start">
@@ -251,13 +277,17 @@
                         </div>
                     </div>
                     <div class="flex-1 max-w-md w-full grid grid-cols-2 gap-4">
-                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div
+                            class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
                             <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Remaining Days</p>
-                            <p class="text-xl font-black text-slate-700 dark:text-slate-300" x-text="safeToSpend.daysLeft"></p>
+                            <p class="text-xl font-black text-slate-700 dark:text-slate-300"
+                                x-text="safeToSpend.daysLeft"></p>
                         </div>
-                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div
+                            class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
                             <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">End of Month Goal</p>
-                            <p class="text-xl font-black text-emerald-500" x-text="formatRupiah(getTypeSpending('Savings'))"></p>
+                            <p class="text-xl font-black text-emerald-500"
+                                x-text="formatRupiah(getTypeSpending('Savings'))"></p>
                         </div>
                     </div>
                 </div>
@@ -312,16 +342,17 @@
                         <div>
                             <p class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mb-4"
                                 x-text="healthScore.explanation"></p>
-                            
+
                             <!-- Health Breakdown -->
                             <div class="grid grid-cols-3 gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                                 <div class="text-center">
                                     <p class="text-[8px] font-black text-slate-400 uppercase">Saving Rate</p>
-                                    <p class="text-xs font-bold text-indigo-500" x-text="healthScore.breakdown.savingsRate + '%'"></p>
+                                    <p class="text-xs font-bold text-indigo-500"
+                                        x-text="healthScore.breakdown.savingsRate + '%'"></p>
                                 </div>
                                 <div class="text-center border-x border-slate-100 dark:border-slate-800">
                                     <p class="text-[8px] font-black text-slate-400 uppercase">Wants</p>
-                                    <p class="text-xs font-bold" 
+                                    <p class="text-xs font-bold"
                                         :class="healthScore.breakdown.wantsLevel === 'High' ? 'text-rose-500' : 'text-emerald-500'"
                                         x-text="healthScore.breakdown.wantsLevel"></p>
                                 </div>
@@ -486,7 +517,8 @@
                             <div
                                 class="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-50 dark:border-slate-700 group transition hover:border-indigo-200 dark:hover:border-indigo-900">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-sm" x-text="getCategoryIcon(r.name)"></div>
+                                    <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-sm"
+                                        x-text="getCategoryIcon(r.name)"></div>
                                     <div>
                                         <p class="text-xs font-bold text-slate-800 dark:text-white" x-text="r.name"></p>
                                         <p class="text-[10px] mt-0.5" :class="getDueDateStatus(r.nextDate)"
@@ -495,9 +527,11 @@
                                 </div>
                                 <div class="text-right flex items-center gap-3">
                                     <div class="text-right">
-                                        <p class="text-xs font-black" :class="r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'"
+                                        <p class="text-xs font-black"
+                                            :class="r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'"
                                             x-text="formatRupiah(r.amount)"></p>
-                                        <p class="text-[8px] text-slate-400 font-bold uppercase tracking-wider" x-text="formatDate(r.nextDate)"></p>
+                                        <p class="text-[8px] text-slate-400 font-bold uppercase tracking-wider"
+                                            x-text="formatDate(r.nextDate)"></p>
                                     </div>
                                     <button @click="deleteRecurring(r.id)"
                                         class="w-6 h-6 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition">✕</button>
@@ -690,7 +724,7 @@
                             <h2 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest">
                                 Transaction History</h2>
                             <template x-if="categoryFilter">
-                                <button @click="categoryFilter = null" 
+                                <button @click="categoryFilter = null"
                                     class="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
                                     <span x-text="categoryFilter"></span>
                                     <span>✕</span>
@@ -698,7 +732,8 @@
                             </template>
                         </div>
                         <button @click="clearHistory()"
-                            class="text-[10px] font-bold text-rose-500 uppercase hover:bg-rose-50 dark:hover:bg-rose-900/30 px-3 py-1 rounded-lg transition">Clear All</button>
+                            class="text-[10px] font-bold text-rose-500 uppercase hover:bg-rose-50 dark:hover:bg-rose-900/30 px-3 py-1 rounded-lg transition">Clear
+                            All</button>
                     </div>
 
                     <div class="flex-1 overflow-y-auto custom-scroll p-4 overflow-x-hidden">
@@ -751,7 +786,8 @@
                                                 <div class="min-w-0 flex-1">
                                                     <p
                                                         class="font-bold text-slate-800 dark:text-white text-sm truncate flex items-center gap-2">
-                                                        <span x-text="t.category" @click.stop="categoryFilter = t.category"></span>
+                                                        <span x-text="t.category"
+                                                            @click.stop="categoryFilter = t.category"></span>
                                                         <span x-show="t.isRecurring"
                                                             class="text-[8px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full uppercase font-black tracking-widest">Auto</span>
                                                     </p>

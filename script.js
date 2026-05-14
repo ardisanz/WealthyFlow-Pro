@@ -302,7 +302,18 @@ function moneyApp() {
                 console.log("[PWA] beforeinstallprompt fired");
                 e.preventDefault();
                 this.deferredPrompt = e;
-                this.showInstallPrompt = true;
+                
+                const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+                if (isMobile && !isStandalone) {
+                    this.showInstallPrompt = true;
+                }
+            });
+
+            window.addEventListener('appinstalled', () => {
+                console.log('[PWA] App was installed');
+                this.showInstallPrompt = false;
             });
 
             window.addEventListener('online', () => {
