@@ -291,14 +291,15 @@ function moneyApp() {
 
             // PWA Setup
             if ("serviceWorker" in navigator) {
-                navigator.serviceWorker.register("/sw.js").then(() => {
-                    console.log("Service Worker Registered");
+                navigator.serviceWorker.register("./sw.js").then((reg) => {
+                    console.log("[PWA] Service Worker Registered with scope:", reg.scope);
                 }).catch(err => {
-                    console.log("Service Worker Registration Failed", err);
+                    console.error("[PWA] Service Worker Registration Failed", err);
                 });
             }
 
             window.addEventListener('beforeinstallprompt', (e) => {
+                console.log("[PWA] beforeinstallprompt fired");
                 e.preventDefault();
                 this.deferredPrompt = e;
                 this.showInstallPrompt = true;
