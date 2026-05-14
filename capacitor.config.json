@@ -1,0 +1,6 @@
+{
+  "appId": "com.ardisanz.wealthyflow",
+  "appName": "WealthyFlow",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

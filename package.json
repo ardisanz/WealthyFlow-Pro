@@ -1,0 +1,28 @@
+{
+  "name": "to-do-list",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "build": "cmd.exe /c \"mkdir www 2>nul & copy index.html www\\ & copy style.css www\\ & copy script.js www\\ & copy manifest.json www\\ & copy sw.js www\\\"",
+    "sync": "npm run build && npx cap sync android",
+    "open:android": "npx cap open android"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ardisanz/WealthyFlow-Pro.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ardisanz/WealthyFlow-Pro/issues"
+  },
+  "homepage": "https://github.com/ardisanz/WealthyFlow-Pro#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4"
+  }
+}
