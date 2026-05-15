@@ -213,6 +213,7 @@ function moneyApp() {
     return {
         // UI States
         showQuickAdd: false,
+        activeTab: 'dashboard',
         isLoading: true,
         
         // PWA States
@@ -227,6 +228,7 @@ function moneyApp() {
         newCategory: '',
         incomeSource: '',
         editingId: null, // For click-to-edit feature
+        isMobile() { return window.innerWidth < 768; },
 
         // Categories
         showAddCategory: false,
