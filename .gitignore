@@ -7,4 +7,3 @@ android/app/build/
 android/build/
 *.log
 .DS_Store
-css/tailwind.css
