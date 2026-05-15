@@ -47,7 +47,7 @@ const FinanceLogic = {
         return changed;
     },
     calculateHealthScore: function (totalIncome, totalSavings, expensesByType, transactions) {
-        if (totalIncome === 0) return { score: 0, status: 'Boros', explanation: 'No income to analyze yet.', breakdown: { savingsRate: 0, wantsLevel: 'Low', consistency: 'Stable' } };
+        if (totalIncome === 0) return { score: 0, status: 'N/A', explanation: 'No income to analyze yet.', breakdown: { savingsRate: 0, wantsLevel: 'Low', consistency: 'Stable' } };
         
         let score = 0;
         let savingRate = totalSavings / totalIncome;
@@ -64,7 +64,7 @@ const FinanceLogic = {
         score = Math.round(score);
         if (score > 100) score = 100;
         
-        let status = score <= 40 ? 'Boros' : (score <= 70 ? 'Cukup' : 'Sehat');
+        let status = score <= 40 ? 'Overspending' : (score <= 70 ? 'Fair' : 'Healthy');
         let explanation = "";
         if (savingRate < 0.1) explanation = "Your saving rate is dangerously low.";
         else if (wantsRatio > 0.4) explanation = "Your saving rate is okay, but spending on Wants is too high.";
@@ -296,9 +296,9 @@ function moneyApp() {
             }, 800); // Wait for alpine to render
 
             this.budgets = JSON.parse(localStorage.getItem('pro_budgets')) || {
-                "Makan": { type: "Needs" },
-                "SPP": { type: "Needs" },
-                "Belanja": { type: "Wants" },
+                "Food": { type: "Needs" },
+                "Tuition": { type: "Needs" },
+                "Shopping": { type: "Wants" },
                 "Netflix": { type: "Wants" }
             };
             this.transactions = JSON.parse(localStorage.getItem('pro_history')) || [];
@@ -448,14 +448,14 @@ function moneyApp() {
             let w = Number(this.tempRatios.Wants);
             let s = Number(this.tempRatios.Savings);
             if (n + w + s !== 100) {
-                this.ratioError = 'Total rasio harus 100%';
+                this.ratioError = 'Total ratio must be 100%';
                 return;
             }
             this.ratioError = '';
             this.ratios = { Needs: n, Wants: w, Savings: s };
             this.saveData();
             this.showRatioSettings = false;
-            this.pushNote('Rasio berhasil diperbarui!');
+            this.pushNote('Ratios updated successfully!');
             this.updateAllDerived();
             this.renderCharts();
         },
@@ -500,7 +500,7 @@ function moneyApp() {
             this.tempRatios = { ...newRatios };
             this.saveData();
             this.suggestions = [];
-            this.pushNote('Rasio disesuaikan!');
+            this.pushNote('Ratios adjusted!');
             this.updateAllDerived();
             this.renderCharts();
         },
@@ -532,7 +532,7 @@ function moneyApp() {
             if (targetObj) targetObj[targetProp] = num;
             else this.newAmount = num;
 
-            let formatted = val ? new Intl.NumberFormat('id-ID').format(num) : '';
+            let formatted = val ? new Intl.NumberFormat('en-US').format(num) : '';
             el.value = formatted;
             if (!targetObj) this.displayAmount = formatted;
         },
@@ -540,17 +540,17 @@ function moneyApp() {
         handleRecFormat(el) {
             let val = el.value.replace(/[^0-9]/g, '');
             this.newRecAmount = parseInt(val) || 0;
-            this.newRecDisplay = val ? new Intl.NumberFormat('id-ID').format(this.newRecAmount) : '';
+            this.newRecDisplay = val ? new Intl.NumberFormat('en-US').format(this.newRecAmount) : '';
             el.value = this.newRecDisplay;
         },
 
         formatRupiah(num) {
-            return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
+            return 'Rp ' + new Intl.NumberFormat('en-US').format(num || 0);
         },
 
         formatDate(iso) {
             try {
-                return new Date(iso).toLocaleDateString('id-ID', {
+                return new Date(iso).toLocaleDateString('en-US', {
                     day: '2-digit', month: 'short', year: 'numeric'
                 });
             } catch { return iso; }
@@ -587,22 +587,22 @@ function moneyApp() {
                 let t = this.transactions.find(x => x.id === this.editingId);
                 if (t) {
                     t.amount = this.newAmount;
-                    t.category = this.transactionType === 'income' ? (this.incomeSource || 'Pemasukan') : this.newCategory;
+                    t.category = this.transactionType === 'income' ? (this.incomeSource || 'Income') : this.newCategory;
                     t.type = this.transactionType;
                 }
                 this.editingId = null;
-                this.pushNote('Transaksi Diperbarui!');
+                this.pushNote('Transaction Updated!');
             } else {
                 // Add new
                 this.transactions.unshift({
                     id: Date.now(),
                     amount: this.newAmount,
-                    category: this.transactionType === 'income' ? (this.incomeSource || 'Pemasukan') : this.newCategory,
+                    category: this.transactionType === 'income' ? (this.incomeSource || 'Income') : this.newCategory,
                     type: this.transactionType,
                     date: new Date().toISOString(),
                     isRecurring: false
                 });
-                this.pushNote('Transaksi Berhasil!');
+                this.pushNote('Transaction Successful!');
             }
 
             this.newAmount = 0;
@@ -617,7 +617,7 @@ function moneyApp() {
             this.editingId = t.id;
             this.transactionType = t.type;
             this.newAmount = t.amount;
-            this.displayAmount = new Intl.NumberFormat('id-ID').format(t.amount);
+            this.displayAmount = new Intl.NumberFormat('en-US').format(t.amount);
             if (t.type === 'income') {
                 this.incomeSource = t.category;
             } else {
@@ -650,7 +650,7 @@ function moneyApp() {
                 nextDate: new Date(this.newRecDate).toISOString()
             });
             this.saveData();
-            this.pushNote('Recurring ditambahkan!');
+            this.pushNote('Recurring Added!');
             this.newRecName = '';
             this.newRecAmount = 0;
             this.newRecDisplay = '';
@@ -682,11 +682,11 @@ function moneyApp() {
             this.saveData();
             this.showAddCategory = false;
             this.newCatName = '';
-            this.pushNote('Kategori Ditambahkan!');
+            this.pushNote('Category Added!');
         },
 
         deleteCategory(key) {
-            if (confirm(`Hapus kategori ${key}?`)) {
+            if (confirm(`Delete category ${key}?`)) {
                 delete this.budgets[key];
                 this.budgets = { ...this.budgets };
                 this.saveData();
