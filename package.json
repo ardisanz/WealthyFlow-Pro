@@ -4,7 +4,8 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-    "build": "cmd.exe /c \"mkdir www 2>nul & copy index.html www\\ & copy style.css www\\ & copy script.js www\\ & copy manifest.json www\\ & copy sw.js www\\\"",
+    "build:css": "npx @tailwindcss/cli -i input.css -o css/tailwind.css",
+    "build": "npm run build:css && cmd.exe /c \"mkdir www 2>nul & copy index.html www\\ & copy style.css www\\ & copy script.js www\\ & copy manifest.json www\\ & copy sw.js www\\ & xcopy js www\\js\\ /Y /E /I & xcopy css www\\css\\ /Y /E /I\"",
     "sync": "npm run build && npx cap sync android",
     "open:android": "npx cap open android"
   },
@@ -22,7 +23,14 @@
   "homepage": "https://github.com/ardisanz/WealthyFlow-Pro#readme",
   "dependencies": {
     "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2"
+  },
+  "devDependencies": {
     "@capacitor/cli": "^8.3.4",
-    "@capacitor/core": "^8.3.4"
+    "tailwindcss": "^4.3.0"
   }
 }

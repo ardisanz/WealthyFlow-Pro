@@ -157,9 +157,12 @@ const FinanceLogic = {
             else balance -= t.amount;
             line.push({ x: t.date, y: balance });
             if (t.type === 'expense') {
-                let type = budgets[t.category]?.type || 'Needs';
-                if (pie[type] !== undefined) pie[type] += t.amount;
                 let d = new Date(t.date);
+                const now = new Date();
+                if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                    let type = budgets[t.category]?.type || 'Needs';
+                    if (pie[type] !== undefined) pie[type] += t.amount;
+                }
                 // Better weekly key: Year-WeekNumber
                 let weekStr = d.getFullYear() + '-W' + this.getWeekNumber(d);
                 weekly[weekStr] = (weekly[weekStr] || 0) + t.amount;
@@ -272,11 +275,20 @@ function moneyApp() {
         // --- INITIALIZATION ---
         init() {
             // Native feel haptic feedback setup
-            window.haptic = (duration = 15) => {
-                if (navigator.vibrate) {
+            window.haptic = async (duration = 15) => {
+                if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
+                    try { await window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' }); } catch(e){}
+                } else if (navigator.vibrate) {
                     try { navigator.vibrate(duration); } catch(e){}
                 }
             };
+            
+            if (window.Capacitor && window.Capacitor.Plugins.SplashScreen) {
+                setTimeout(() => {
+                    window.Capacitor.Plugins.SplashScreen.hide();
+                }, 500);
+            }
+
             setTimeout(() => {
                 document.querySelectorAll('button, .touch-target').forEach(btn => {
                     btn.addEventListener('click', () => window.haptic(15));
@@ -454,8 +466,15 @@ function moneyApp() {
         },
 
         getTypeSpending(type) {
+            const now = new Date();
             return this.transactions
-                .filter(t => t.type === 'expense' && this.budgets[t.category]?.type === type)
+                .filter(t => {
+                    let d = new Date(t.date);
+                    return t.type === 'expense' && 
+                           this.budgets[t.category]?.type === type &&
+                           d.getMonth() === now.getMonth() && 
+                           d.getFullYear() === now.getFullYear();
+                })
                 .reduce((s, t) => s + t.amount, 0);
         },
 
@@ -491,13 +510,19 @@ function moneyApp() {
         },
 
         updateHealthScore() {
+            const now = new Date();
+            const monthlyTransactions = this.transactions.filter(t => {
+                let d = new Date(t.date);
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            });
+
             let expensesByType = {
                 Needs: this.getTypeSpending('Needs'),
                 Wants: this.getTypeSpending('Wants'),
                 Savings: this.getTypeSpending('Savings')
             };
-            let totalSav = this.transactions.filter(t => t.type === 'expense' && this.budgets[t.category]?.type === 'Savings').reduce((s, t) => s + t.amount, 0);
-            this.healthScore = FinanceLogic.calculateHealthScore(this.totalIncome, totalSav, expensesByType, this.transactions);
+            let monthlySav = monthlyTransactions.filter(t => t.type === 'expense' && this.budgets[t.category]?.type === 'Savings').reduce((s, t) => s + t.amount, 0);
+            this.healthScore = FinanceLogic.calculateHealthScore(this.monthlyIncome, monthlySav, expensesByType, monthlyTransactions);
         },
 
 
@@ -745,16 +770,16 @@ function moneyApp() {
                         labels: ['Needs', 'Wants', 'Savings'],
                         datasets: [{
                             data: [data.pie.Needs, data.pie.Wants, data.pie.Savings],
-                            backgroundColor: ['#7EACB5', '#fbbf24', '#34d399'],
+                            backgroundColor: ['#7AAACE', '#fbbf24', '#34d399'],
                             borderWidth: 2,
-                            borderColor: '#1e293b'
+                            borderColor: '#F7F8F0'
                         }]
                     },
                     options: { 
                         responsive: true, 
                         maintainAspectRatio: false, 
                         plugins: { 
-                            legend: { position: 'bottom', labels: { color: '#cbd5e1' } } 
+                            legend: { position: 'bottom', labels: { color: '#5a7d96' } } 
                         },
                         onClick: (evt, elements) => {
                             if (elements.length > 0) {
@@ -779,13 +804,13 @@ function moneyApp() {
                         datasets: [{
                             label: 'Balance',
                             data: data.line.map(d => d.y),
-                            borderColor: '#BF4646',
+                            borderColor: '#355872',
                             tension: 0.3,
                             fill: true,
-                            backgroundColor: 'rgba(191, 70, 70, 0.1)'
+                            backgroundColor: 'rgba(53, 88, 114, 0.08)'
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#94a3b8' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a9ea8' } }, y: { ticks: { color: '#8a9ea8' } } } }
                 });
             }
 
@@ -801,11 +826,11 @@ function moneyApp() {
                         datasets: [{
                             label: 'Expenses/Week',
                             data: weekVals,
-                            backgroundColor: '#7EACB5',
+                            backgroundColor: '#7AAACE',
                             borderRadius: 4
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#94a3b8' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a9ea8' } }, y: { ticks: { color: '#8a9ea8' } } } }
                 });
             }
         },

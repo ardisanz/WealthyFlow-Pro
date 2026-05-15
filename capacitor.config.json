@@ -1,6 +1,20 @@
 {
-  "appId": "com.ardisanz.wealthyflow",
-  "appName": "WealthyFlow",
+  "appId": "com.wealthyflow.app",
+  "appName": "WealthyFlow PRO",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#F7F8F0",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "LIGHT",
+      "backgroundColor": "#F7F8F0"
+    }
+  }
 }

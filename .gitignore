@@ -1,0 +1,10 @@
+node_modules/
+www/
+dist/
+android/.idea/
+android/.gradle/
+android/app/build/
+android/build/
+*.log
+.DS_Store
+css/tailwind.css
