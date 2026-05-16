@@ -66,9 +66,19 @@ const FinanceLogic = {
         
         let status = score <= 40 ? 'Overspending' : (score <= 70 ? 'Fair' : 'Healthy');
         let explanation = "";
-        if (savingRate < 0.1) explanation = "Your saving rate is dangerously low.";
-        else if (wantsRatio > 0.4) explanation = "Your saving rate is okay, but spending on Wants is too high.";
-        else explanation = "Great job! Your saving rate and spending are stable.";
+        
+        // Provide actionable, specific insights instead of generic text
+        if (savingRate < 0.1) {
+            explanation = "Your savings rate is below 10%. Try identifying one non-essential subscription to pause this month to build your safety net.";
+        } else if (wantsRatio > 0.4) {
+            explanation = "You're spending heavily on 'Wants'. Consider holding off on non-essential purchases this week to boost your score.";
+        } else if (needsRatio > 0.6) {
+            explanation = "Fixed expenses are eating up your income. Look for ways to optimize utility bills or recurring costs.";
+        } else if (score >= 80) {
+            explanation = "Great financial discipline! You're optimizing your budget perfectly. Consider moving excess cash to an investment.";
+        } else {
+            explanation = "Your spending is relatively stable. Try to reduce 'Wants' by 5% to hit the next tier of financial health.";
+        }
 
         // Breakdown logic
         let wantsLevel = wantsRatio > 0.5 ? 'High' : (wantsRatio > 0.3 ? 'Normal' : 'Low');
