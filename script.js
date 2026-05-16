@@ -296,6 +296,8 @@ function moneyApp() {
 
         // --- INITIALIZATION ---
         init() {
+            this.isLoading = true;
+            
             // Native feel haptic feedback setup
             window.haptic = async (duration = 15) => {
                 if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
@@ -325,22 +327,56 @@ function moneyApp() {
             this.applyFontSize();
 
             this.budgets = JSON.parse(localStorage.getItem('pro_budgets')) || {
-                "Food": { type: "Needs" },
-                "Tuition": { type: "Needs" },
-                "Shopping": { type: "Wants" },
-                "Netflix": { type: "Wants" }
+                "Housing": { type: "Needs" },
+                "Utilities": { type: "Needs" },
+                "Groceries": { type: "Needs" },
+                "Transport": { type: "Needs" },
+                "Dining Out": { type: "Wants" },
+                "Entertainment": { type: "Wants" },
+                "Investments": { type: "Savings" },
+                "Emergency Fund": { type: "Savings" }
             };
-            this.transactions = JSON.parse(localStorage.getItem('pro_history')) || [];
+
+            let defaultTx = [];
+            let now = new Date();
+            let d1 = new Date(now); d1.setDate(1); // 1st of month
+            let d2 = new Date(now); d2.setDate(2);
+            let d3 = new Date(now); d3.setDate(3);
+            let d4 = new Date(now); d4.setDate(5);
+            let d5 = new Date(now); d5.setDate(8);
+            
+            if (!localStorage.getItem('pro_history')) {
+                defaultTx = [
+                    { id: '1', date: d1.toISOString(), type: 'income', amount: 15000000, source: 'Salary' },
+                    { id: '2', date: d1.toISOString(), type: 'expense', amount: 3500000, category: 'Housing' },
+                    { id: '3', date: d2.toISOString(), type: 'expense', amount: 1200000, category: 'Groceries' },
+                    { id: '4', date: d3.toISOString(), type: 'expense', amount: 800000, category: 'Utilities' },
+                    { id: '5', date: d4.toISOString(), type: 'expense', amount: 3000000, category: 'Investments' },
+                    { id: '6', date: d5.toISOString(), type: 'expense', amount: 600000, category: 'Dining Out' }
+                ];
+            }
+            
+            this.transactions = JSON.parse(localStorage.getItem('pro_history')) || defaultTx;
             this.recurringTransactions = JSON.parse(localStorage.getItem('pro_recurring')) || [];
             this.ratios = JSON.parse(localStorage.getItem('pro_ratios')) || { Needs: 50, Wants: 30, Savings: 20 };
 
             this.tempRatios = { ...this.ratios };
             this.newCategory = Object.keys(this.budgets)[0] || '';
 
+            this.updateAllDerived(); // Ensure all states are synced before showing UI
+
             if (FinanceLogic.processRecurring(this.transactions, this.recurringTransactions)) {
                 this.saveData();
                 this.pushNote('Recurring transactions auto-processed!');
             }
+
+            // Simulate loading for realistic UX
+            setTimeout(() => {
+                this.isLoading = false;
+                this.$nextTick(() => {
+                    if (this.activeTab === 'dashboard') this.renderCharts();
+                });
+            }, 600);
 
             // PWA Setup
             if ("serviceWorker" in navigator) {
