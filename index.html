@@ -1,851 +1,1219 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>WealthyFlow</title>
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ffffff">
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <title>WealthyFlow</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
 </head>
+
 <body x-data="moneyApp()" x-init="init()">
-<div id="app">
+    <div id="app">
 
-<!-- TOAST -->
-<div class="toast-wrap" style="top:calc(16px + env(safe-area-inset-top))">
-  <template x-for="n in notifications" :key="n.id">
-    <div class="toast fade-in"><span>✓</span><span x-text="n.msg"></span></div>
-  </template>
-</div>
-
-<!-- CONFIRM MODAL -->
-<div class="modal-wrap" x-show="confirmModal.show" x-cloak @click.self="confirmModal.show=false" style="display:none">
-  <div class="modal-box">
-    <p class="modal-title">Confirm Action</p>
-    <p class="modal-msg" x-text="confirmModal.msg"></p>
-    <div class="modal-actions">
-      <button class="btn btn-secondary flex-1" @click="confirmModal.show=false">Cancel</button>
-      <button class="btn btn-danger flex-1" @click="confirmModal.onConfirm && confirmModal.onConfirm()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- CALCULATOR SHEET -->
-<div class="overlay" x-show="showCalc" x-cloak @click.self="showCalc=false" style="display:none">
-  <div class="sheet" style="max-width:430px">
-    <div class="sheet-handle"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <p class="sheet-title" style="margin:0">Calculator</p>
-      <button class="btn btn-ghost" @click="showCalc=false">✕</button>
-    </div>
-    <div class="calc-display">
-      <div class="calc-expr" x-text="calcExpression||'&nbsp;'"></div>
-      <div class="calc-num" x-text="calcDisplay"></div>
-    </div>
-    <div class="calc-grid">
-      <button class="calc-key rst" @click="calcClear()">C</button>
-      <button class="calc-key op" @click="calcOp('/')">÷</button>
-      <button class="calc-key op" @click="calcOp('*')">×</button>
-      <button class="calc-key op" @click="calcOp('-')">−</button>
-      <template x-for="n in [7,8,9]"><button class="calc-key" @click="calcNum(String(n))" x-text="n"></button></template>
-      <button class="calc-key op" @click="calcOp('+')">+</button>
-      <template x-for="n in [4,5,6]"><button class="calc-key" @click="calcNum(String(n))" x-text="n"></button></template>
-      <button class="calc-key eq" @click="calcSolve(); useCalcResult(); showCalc=false" style="grid-row:span 2">=</button>
-      <template x-for="n in [1,2,3]"><button class="calc-key" @click="calcNum(String(n))" x-text="n"></button></template>
-      <button class="calc-key" @click="calcNum('0')" style="grid-column:span 2">0</button>
-      <button class="calc-key" @click="calcNum('.')">.</button>
-    </div>
-  </div>
-</div>
-
-<!-- QUICK ADD SHEET -->
-<div class="overlay" x-show="showQuickAdd" x-cloak @click.self="showQuickAdd=false;editingId=null" style="display:none">
-  <div class="sheet" style="max-width:430px">
-    <div class="sheet-handle"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <p class="sheet-title" style="margin:0" x-text="editingId?'Edit Transaction':'New Entry'"></p>
-      <button class="btn btn-ghost" @click="showQuickAdd=false;editingId=null">✕</button>
-    </div>
-    <div class="tab-toggle">
-      <button class="tab-toggle-btn" :class="transactionType==='income'?'active':''" @click="transactionType='income'">Income</button>
-      <button class="tab-toggle-btn" :class="transactionType==='expense'?'active':''" @click="transactionType='expense'">Expense</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Amount</label>
-      <div style="display:flex;gap:8px">
-        <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)" class="input-field large flex-1" placeholder="Rp 0">
-        <button class="btn btn-secondary btn-icon" @click="showCalc=true" title="Calculator" style="width:42px;height:42px">🧮</button>
-      </div>
-    </div>
-    <div class="form-group" x-show="transactionType==='expense'">
-      <label class="form-label">Category</label>
-      <select x-model="newCategory" class="input-field">
-        <option value="" disabled>Select category</option>
-        <template x-for="cat in Object.keys(budgets)" :key="cat"><option :value="cat" x-text="getCategoryIcon(cat)+' '+cat"></option></template>
-      </select>
-    </div>
-    <div class="form-group" x-show="transactionType==='income'">
-      <label class="form-label">Source</label>
-      <input type="text" x-model="incomeSource" placeholder="Salary, Freelance…" class="input-field">
-    </div>
-    <button class="btn btn-primary btn-full" style="height:44px" @click="addTransaction()" x-text="editingId?'Update Transaction':'Save Transaction'"></button>
-  </div>
-</div>
-
-<!-- RATIO SETTINGS SHEET -->
-<div class="overlay" x-show="showRatioSettings" x-cloak @click.self="showRatioSettings=false" style="display:none">
-  <div class="sheet" style="max-width:430px">
-    <div class="sheet-handle"></div>
-    <p class="sheet-title">Budget Ratio (%)</p>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <div class="flex-1">
-        <label class="form-label">Needs</label>
-        <input type="number" x-model.number="tempRatios.Needs" class="input-field">
-      </div>
-      <div class="flex-1">
-        <label class="form-label">Wants</label>
-        <input type="number" x-model.number="tempRatios.Wants" class="input-field">
-      </div>
-      <div class="flex-1">
-        <label class="form-label">Savings</label>
-        <input type="number" x-model.number="tempRatios.Savings" class="input-field">
-      </div>
-    </div>
-    <p style="font-size:12px;margin-bottom:12px" :style="(Number(tempRatios.Needs)+Number(tempRatios.Wants)+Number(tempRatios.Savings))===100?'color:var(--success)':'color:var(--error)'" x-text="'Total: '+(Number(tempRatios.Needs)+Number(tempRatios.Wants)+Number(tempRatios.Savings))+'%'"></p>
-    <p x-show="ratioError" class="text-error" style="font-size:12px;margin-bottom:8px" x-text="ratioError"></p>
-    <button class="btn btn-primary btn-full" style="height:44px" @click="saveRatios()">Save Ratio</button>
-  </div>
-</div>
-
-<!-- ADD CATEGORY SHEET -->
-<div class="overlay" x-show="showAddCategory" x-cloak @click.self="showAddCategory=false" style="display:none">
-  <div class="sheet" style="max-width:430px">
-    <div class="sheet-handle"></div>
-    <p class="sheet-title">Manage Categories</p>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <input type="text" x-model="newCatName" placeholder="Category name" class="input-field flex-1">
-      <select x-model="newCatType" class="input-field" style="width:110px">
-        <option value="Needs">Needs</option>
-        <option value="Wants">Wants</option>
-        <option value="Savings">Savings</option>
-      </select>
-      <button class="btn btn-primary" style="height:40px;padding:0 14px" @click="addCategory()">Add</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      <template x-for="(data,cat) in budgets" :key="cat">
-        <div style="display:flex;align-items:center;gap:4px;background:var(--surface-1);border:1px solid var(--outline-2);border-radius:var(--r-sm);padding:3px 8px">
-          <span style="font-size:12px;font-weight:500;color:var(--on-surface-2)" x-text="getCategoryIcon(cat)+' '+cat"></span>
-          <button @click="deleteCategory(cat)" style="background:none;border:none;cursor:pointer;color:var(--error);font-size:14px;line-height:1;padding:0 2px">&times;</button>
+        <!-- TOAST -->
+        <div class="toast-wrap" style="top:calc(16px + env(safe-area-inset-top))">
+            <template x-for="n in notifications" :key="n.id">
+                <div class="toast fade-in"><span>✓</span><span x-text="n.msg"></span></div>
+            </template>
         </div>
-      </template>
-    </div>
-  </div>
-</div>
 
-<!-- RECURRING SHEET -->
-<div class="overlay" x-show="showRecurring" x-cloak @click.self="showRecurring=false" style="display:none">
-  <div class="sheet" style="max-width:430px">
-    <div class="sheet-handle"></div>
-    <p class="sheet-title">Add Recurring Bill</p>
-    <div class="form-group">
-      <label class="form-label">Name</label>
-      <input type="text" x-model="newRecName" placeholder="Netflix, Rent…" class="input-field">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Amount</label>
-      <input type="text" inputmode="numeric" x-model="newRecDisplay" @input="handleRecFormat($el)" placeholder="Rp 0" class="input-field large">
-    </div>
-    <div style="display:flex;gap:8px">
-      <div class="form-group flex-1">
-        <label class="form-label">Due Date</label>
-        <input type="date" x-model="newRecDate" class="input-field">
-      </div>
-      <div class="form-group flex-1">
-        <label class="form-label">Type</label>
-        <select x-model="newRecType" class="input-field">
-          <option value="expense">Expense</option>
-          <option value="income">Income</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-full" style="height:44px" @click="addRecurring();showRecurring=false">Add Recurring</button>
-  </div>
-</div>
-
-<!-- GLOBAL LOADING STATE -->
-<div x-show="isLoading" class="custom-scroll" style="padding:16px;flex:1;display:flex;flex-direction:column;gap:16px;padding-top:calc(16px + env(safe-area-inset-top))">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <div class="skeleton" style="width:120px;height:24px"></div>
-    <div class="skeleton" style="width:32px;height:32px;border-radius:var(--r-full)"></div>
-  </div>
-  <div class="skeleton" style="width:100%;height:140px;border-radius:var(--r-xl)"></div>
-  <div style="display:flex;gap:12px">
-    <div class="skeleton" style="flex:1;height:80px;border-radius:var(--r-lg)"></div>
-    <div class="skeleton" style="flex:1;height:80px;border-radius:var(--r-lg)"></div>
-  </div>
-  <div class="skeleton" style="width:100%;height:100px;border-radius:var(--r-lg)"></div>
-  <div class="skeleton" style="width:100%;height:60px;border-radius:var(--r-lg)"></div>
-</div>
-
-<!-- MAIN UI WRAPPER -->
-<div x-show="!isLoading" style="display:none;flex:1;flex-direction:column;position:relative">
-
-<!-- HEADER -->
-<header class="app-header">
-  <div style="display:flex;flex-direction:column">
-    <span style="font-size:10px;font-weight:600;color:var(--outline);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px" x-text="getGreeting()"></span>
-    <span class="brand" style="line-height:1">WealthyFlow</span>
-  </div>
-  <div class="header-actions">
-    <input type="file" id="importFile" @change="importData" class="hide-scrollbar" accept=".json" style="display:none">
-    <button class="icon-btn" @click="document.getElementById('importFile').click()" title="Import Data">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    </button>
-    <button class="icon-btn" @click="exportData()" title="Export Data">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </button>
-    <div class="avatar" @click="activeTab='profile'">W</div>
-  </div>
-</header>
-
-<!-- ALERTS BANNER -->
-<div style="padding:0 16px;margin-top:8px" x-show="alerts.length>0">
-  <template x-for="a in alerts" :key="a.msg">
-    <div class="alert-banner" :class="a.type==='critical'?'error':'warning'">
-      <span style="font-size:14px" x-text="a.type==='critical'?'🔴':'⚠️'"></span>
-      <p class="alert-msg" x-text="a.msg"></p>
-    </div>
-  </template>
-</div>
-
-<!-- INSTALL PROMPT -->
-<div x-show="showInstallPrompt" x-cloak style="margin:8px 16px 0;background:var(--surface-0);border:1px solid var(--outline-2);border-radius:var(--r-lg);padding:12px;display:flex;align-items:center;gap:10px">
-  <span style="font-size:20px">📲</span>
-  <p style="flex:1;font-size:12px;font-weight:500;color:var(--on-surface-2)">Install WealthyFlow for the best experience.</p>
-  <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" @click="installPWA()">Install</button>
-  <button class="icon-btn" @click="showInstallPrompt=false" style="flex-shrink:0">✕</button>
-</div>
-
-<!-- ═══════════ DASHBOARD TAB ═══════════ -->
-<div class="tab-content custom-scroll" x-show="activeTab==='dashboard'" style="display:none">
-
-  <!-- Smart Insight / Financial Health Score -->
-  <div class="card mb-12" style="border-radius:16px;padding:20px;border-color:var(--outline-2);box-shadow:0 4px 20px rgba(0,0,0,0.03)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div>
-        <p style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--outline);margin-bottom:2px">Financial Health</p>
-        <div style="display:flex;align-items:baseline;gap:4px">
-          <h1 style="font-size:42px;font-weight:700;letter-spacing:-0.04em;color:var(--on-surface);line-height:1" x-text="healthScore.score"></h1>
-          <span style="font-size:14px;color:var(--outline);font-weight:500">/ 100</span>
-        </div>
-      </div>
-      <div style="width:56px;height:56px;border-radius:var(--r-full);background:var(--surface-1);display:flex;align-items:center;justify-content:center;border:1px solid var(--outline-2)">
-        <span style="font-size:24px" x-text="healthScore.score>=80?'🏆':(healthScore.score>=50?'📈':'⚠️')"></span>
-      </div>
-    </div>
-    <div style="padding:14px;background:var(--surface-1);border-radius:12px;border:1px solid var(--outline-2)">
-      <div style="display:flex;align-items:flex-start;gap:10px">
-        <span style="font-size:16px;line-height:1.2">💡</span>
-        <p style="font-size:12px;color:var(--on-surface-2);line-height:1.45;font-weight:500;flex:1" x-text="healthScore.explanation"></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Weekly Overview Header -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-    <div>
-      <p class="section-label" style="margin-bottom:2px">Weekly Overview</p>
-      <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)">Cashflow Momentum</h1>
-    </div>
-    <span class="chip chip-neutral" style="margin-top:2px">Latest</span>
-  </div>
-
-  <!-- Income / Expense tiles -->
-  <div class="stat-grid mb-12">
-    <div class="stat-tile">
-      <p class="stat-label">Total Income</p>
-      <p class="stat-value text-success" style="font-size:15px" x-text="formatRupiah(totalIncome)"></p>
-    </div>
-    <div class="stat-tile">
-      <p class="stat-label">Total Expenses</p>
-      <p class="stat-value text-error" style="font-size:15px" x-text="formatRupiah(totalExpense)"></p>
-    </div>
-  </div>
-
-  <!-- Suggestion banner -->
-  <template x-if="suggestions.length>0">
-    <div class="alert-banner warning mb-12" style="margin-bottom:12px">
-      <span style="font-size:14px">💡</span>
-      <div class="flex-1">
-        <p class="alert-msg" x-text="suggestions[0].message"></p>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="btn" style="background:var(--warning);color:#fff;padding:5px 12px;font-size:11px;border-radius:var(--r-sm)" @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
-          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" @click="ignoreSuggestion()">Ignore</button>
-        </div>
-      </div>
-    </div>
-  </template>
-
-  <!-- Quick Add Button -->
-  <div style="margin-bottom:24px">
-    <button class="btn btn-primary btn-full" style="height:48px;border-radius:12px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)" @click="showQuickAdd=true;editingId=null">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add New Transaction
-    </button>
-  </div>
-
-  <!-- Recent History -->
-  <div class="card mb-12">
-    <div class="section-hd">
-      <h2>Recent History</h2>
-      <div style="display:flex;align-items:center;gap:8px">
-        <template x-if="categoryFilter">
-          <button class="chip chip-accent" @click="categoryFilter=null" style="cursor:pointer;gap:4px">
-            <span x-text="categoryFilter"></span><span>&times;</span>
-          </button>
-        </template>
-        <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" @click="activeTab='history'">Filter ≡</button>
-      </div>
-    </div>
-    <!-- Skeleton -->
-    <template x-if="isLoading">
-      <div>
-        <template x-for="i in 3">
-          <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--outline-2)">
-            <div class="skeleton" style="width:36px;height:36px;border-radius:var(--r)"></div>
-            <div class="flex-1"><div class="skeleton" style="height:12px;width:60%;margin-bottom:5px"></div><div class="skeleton" style="height:10px;width:40%"></div></div>
-            <div class="skeleton" style="height:12px;width:60px"></div>
-          </div>
-        </template>
-      </div>
-    </template>
-    <!-- Items (last 5) -->
-    <template x-if="!isLoading">
-      <div>
-        <template x-if="transactions.length===0">
-          <div class="empty-state" style="padding:24px 0">
-            <p class="empty-icon">🍃</p>
-            <p class="empty-title">No transactions yet</p>
-            <p class="empty-sub">Tap New Entry to get started</p>
-          </div>
-        </template>
-        <template x-for="t in filteredTransactions.slice(0,5)" :key="t.id">
-          <div class="swipe-container">
-            <div class="swipe-bg" @click.stop="deleteTransaction(t.id)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-            </div>
-            <div class="list-item"
-              x-data="{sw:0,sx:0}"
-              @touchstart.passive="sx=$event.touches[0].clientX"
-              @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
-              @touchend="sw<-35?sw=-56:sw=0"
-              :style="`background:var(--surface-0);position:relative;z-index:1;border-radius:var(--r);transform:translateX(${sw}px);transition:transform .2s`"
-              @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
-              <div class="list-icon" x-text="t.type==='income'?'💰':getCategoryIcon(t.category)"></div>
-              <div class="list-main">
-                <p class="list-title" x-text="t.category" @click.stop="categoryFilter=t.category"></p>
-                <p class="list-sub" x-text="formatDate(t.date)+(t.isRecurring?' · Auto':'')"></p>
-              </div>
-              <div class="list-right">
-                <p class="list-amount" :class="t.type==='income'?'pos':'neg'" x-text="(t.type==='income'?'+':'-')+formatRupiah(t.amount)"></p>
-                <span class="chip" :class="t.type==='income'?'chip-success':'chip-neutral'" x-text="t.type==='income'?'INCOME':(budgets[t.category]?.type||'').toUpperCase()||'EXPENSE'"></span>
-              </div>
-            </div>
-          </div>
-        </template>
-        <template x-if="transactions.length>5">
-          <button class="btn btn-ghost btn-full" style="margin-top:8px;font-size:12px" @click="activeTab='history'">View All Transactions →</button>
-        </template>
-      </div>
-    </template>
-  </div>
-
-  <!-- Quick Allocation -->
-  <div class="card mb-12">
-    <div class="section-hd" style="margin-bottom:8px">
-      <h2>Quick Allocation</h2>
-      <button class="icon-btn" @click="showCalc=true" title="Calculator" style="width:28px;height:28px;font-size:12px">🧮</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Amount</label>
-      <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)" class="input-field large" placeholder="Rp 0">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Category</label>
-      <select x-model="newCategory" class="input-field">
-        <option value="" disabled>Essentials</option>
-        <template x-for="cat in Object.keys(budgets)" :key="cat"><option :value="cat" x-text="getCategoryIcon(cat)+' '+cat"></option></template>
-      </select>
-    </div>
-    <button class="btn btn-primary btn-full" style="height:40px" @click="transactionType='expense';addTransaction()">Save</button>
-  </div>
-
-  <!-- Spending Trend Chart -->
-  <div class="card">
-    <div class="section-hd">
-      <h2>Spending Trend</h2>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    </div>
-    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
-  </div>
-
-</div><!-- /dashboard tab -->
-<!-- ═══════════ CASHFLOW TAB ═══════════ -->
-<div class="tab-content custom-scroll" x-show="activeTab==='cashflow'" style="display:none">
-
-  <!-- Safe to Spend Hero -->
-  <div class="card card-dark mb-12">
-    <p style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:4px">Safe to Spend Today</p>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <p style="font-size:28px;font-weight:700;letter-spacing:-0.03em;color:var(--on-primary)" x-text="formatRupiah(safeToSpend.amount)"></p>
-      <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')"
-        x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
-        <p style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Remaining Days</p>
-        <p style="font-size:22px;font-weight:700;color:var(--on-primary)" x-text="safeToSpend.daysLeft"></p>
-      </div>
-      <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
-        <p style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">End of Month Goal</p>
-        <p style="font-size:14px;font-weight:700;color:var(--on-primary)" x-text="formatRupiah(getTypeSpending('Savings'))"></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Monthly Income / Balance -->
-  <div class="stat-grid mb-12">
-    <div class="stat-tile dark">
-      <p class="stat-label">Monthly Income</p>
-      <p class="stat-value" x-text="formatRupiah(monthlyIncome)"></p>
-    </div>
-    <div class="stat-tile">
-      <p class="stat-label">Total Balance</p>
-      <p class="stat-value" x-text="formatRupiah(totalSaldo)"></p>
-    </div>
-  </div>
-
-  <!-- Cashflow Projection -->
-  <div class="card mb-12">
-    <div class="section-hd">
-      <h2>Cashflow Projection</h2>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-    </div>
-    <template x-if="projection.warning">
-      <div class="alert-banner error mb-8" style="margin-bottom:8px">
-        <span>⚠️</span><p class="alert-msg" x-text="projection.warning"></p>
-      </div>
-    </template>
-    <div class="proj-item">
-      <div>
-        <p class="proj-label">In 7 Days</p>
-        <p class="proj-val" :class="projection.days7<0?'text-error':''" x-text="formatRupiah(projection.days7)"></p>
-      </div>
-      <span class="chip" :class="projection.days7<0?'chip-error':'chip-success'" x-text="projection.days7<0?'Negative':'Positive'"></span>
-    </div>
-    <div class="proj-item">
-      <div>
-        <p class="proj-label">In 30 Days</p>
-        <p class="proj-val" :class="projection.days30<0?'text-error':''" x-text="formatRupiah(projection.days30)"></p>
-      </div>
-      <span class="chip" :class="projection.days30<0?'chip-error':'chip-success'" x-text="projection.days30<0?'Negative':'Positive'"></span>
-    </div>
-  </div>
-
-  <!-- Balance Over Time Chart -->
-  <div class="card mb-12">
-    <div class="section-hd"><h2>Balance Over Time</h2></div>
-    <div class="chart-wrap" style="height:130px"><canvas id="lineChart"></canvas></div>
-  </div>
-
-  <!-- Pie Distribution -->
-  <div class="card">
-    <div class="section-hd"><h2>Expense Distribution</h2></div>
-    <div style="height:170px"><canvas id="pieChart"></canvas></div>
-  </div>
-
-</div><!-- /cashflow tab -->
-
-<!-- ═══════════ SAVINGS TAB ═══════════ -->
-<div class="tab-content custom-scroll" x-show="activeTab==='savings'" style="display:none">
-
-  <!-- Auto-Saving System -->
-  <div class="card mb-12">
-    <div class="section-hd">
-      <h2>Auto-Saving System</h2>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" @click="showRatioSettings=true">Ratio</button>
-        <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" @click="showAddCategory=true">Category</button>
-      </div>
-    </div>
-    <p style="font-size:12px;color:var(--outline);margin-bottom:12px">Allocated based on your <span style="font-weight:600;color:var(--on-surface)" x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
-    <template x-if="suggestions.length>0">
-      <div class="alert-banner warning mb-12" style="margin-bottom:12px">
-        <span>💡</span>
-        <div class="flex-1">
-          <p class="alert-msg" x-text="suggestions[0].message"></p>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="btn" style="background:var(--warning);color:#fff;padding:4px 10px;font-size:11px;border-radius:var(--r-sm)" @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
-            <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" @click="ignoreSuggestion()">Ignore</button>
-          </div>
-        </div>
-      </div>
-    </template>
-    <template x-for="type in ['Needs','Wants','Savings']" :key="type">
-      <div class="saving-item">
-        <div class="saving-item-hd">
-          <div>
-            <p class="saving-name" x-text="type"></p>
-            <p class="saving-ratio" x-text="'RATIO: '+ratios[type]+'%'"></p>
-          </div>
-          <p class="saving-amount" x-text="formatRupiah(getTypeSpending(type))"></p>
-        </div>
-        <div class="progress-track">
-          <div class="progress-fill"
-            :style="'width:'+Math.min(getTypePercent(type),100)+'%;'+(type==='Needs'?'background:var(--accent)':(type==='Wants'?'background:var(--warning-bg);filter:brightness(0.7)':'background:var(--success)'))"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px">
-          <p style="font-size:10px;color:var(--outline);font-weight:500" x-text="getTypePercent(type)+'% used'"></p>
-          <p style="font-size:10px;color:var(--outline);font-weight:500" x-text="'Limit '+formatRupiah(getAutoBudgetLimit(type))"></p>
-        </div>
-        <p style="font-size:12px;color:var(--on-surface-2);margin-top:4px"
-          x-text="type==='Needs'?'Essential living expenses and bills.':(type==='Wants'?'Lifestyle, hobbies, and entertainment.':'Emergency fund and future investments.')"></p>
-      </div>
-    </template>
-  </div>
-
-  <!-- Financial Health -->
-  <div class="card mb-12">
-    <div class="section-hd">
-      <h2>Financial Health</h2>
-      <span class="chip" :class="healthScore.score<=40?'chip-error':(healthScore.score<=70?'chip-warning':'chip-success')" x-text="healthScore.status"></span>
-    </div>
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-      <div class="health-ring-wrap">
-        <svg viewBox="0 0 64 64">
-          <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
-          <circle cx="32" cy="32" r="27" fill="none" stroke-width="6"
-            stroke-dasharray="170"
-            :stroke-dashoffset="isLoading?170:(170-(170*healthScore.score/100))"
-            :stroke="healthScore.score<=40?'var(--error)':(healthScore.score<=70?'#d97706':'var(--success)')"
-            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease"/>
-        </svg>
-        <div class="health-ring-center">
-          <span class="health-score" x-text="healthScore.score"></span>
-          <span class="health-score-label">Score</span>
-        </div>
-      </div>
-      <div class="flex-1">
-        <p style="font-size:13px;color:var(--on-surface-2);line-height:1.5" x-text="healthScore.explanation"></p>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--outline-2);border:1px solid var(--outline-2);border-radius:var(--r);overflow:hidden">
-      <div style="background:var(--surface-0);padding:10px;text-align:center">
-        <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">Saving</p>
-        <p style="font-size:13px;font-weight:700;color:var(--success);margin-top:2px" x-text="healthScore.breakdown.savingsRate+'%'"></p>
-      </div>
-      <div style="background:var(--surface-0);padding:10px;text-align:center">
-        <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">Wants</p>
-        <p style="font-size:13px;font-weight:700;margin-top:2px" :class="healthScore.breakdown.wantsLevel==='High'?'text-error':'text-success'" x-text="healthScore.breakdown.wantsLevel"></p>
-      </div>
-      <div style="background:var(--surface-0);padding:10px;text-align:center">
-        <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">Stable</p>
-        <p style="font-size:13px;font-weight:700;margin-top:2px" :class="healthScore.breakdown.consistency==='Stable'?'text-success':'text-error'" x-text="healthScore.breakdown.consistency==='Stable'?'Yes':'No'"></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recurring Bills -->
-  <div class="card">
-    <div class="section-hd">
-      <h2>Recurring Bills</h2>
-      <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" @click="showRecurring=true">+ Add</button>
-    </div>
-    <template x-if="recurringTransactions.length===0">
-      <div class="empty-state" style="padding:16px 0">
-        <p class="empty-title">No recurring bills</p>
-        <p class="empty-sub">Add bills that repeat monthly</p>
-      </div>
-    </template>
-    <template x-for="r in sortedRecurring" :key="r.id">
-      <div class="list-item">
-        <div class="list-icon" x-text="getCategoryIcon(r.name)"></div>
-        <div class="list-main">
-          <p class="list-title" x-text="r.name"></p>
-          <p class="list-sub" :class="getDueDateStatus(r.nextDate)" x-text="getDueText(r.nextDate)+' · '+formatDate(r.nextDate)"></p>
-        </div>
-        <div class="list-right">
-          <p class="list-amount" :class="r.type==='income'?'pos':'neg'" x-text="(r.type==='income'?'+':'-')+formatRupiah(r.amount)"></p>
-          <button @click="deleteRecurring(r.id)" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--error);font-weight:600;margin-top:2px">Remove</button>
-        </div>
-      </div>
-    </template>
-  </div>
-
-</div><!-- /savings tab -->
-
-<!-- ═══════════ HISTORY TAB ═══════════ -->
-<div class="tab-content custom-scroll" x-show="activeTab==='history'" style="display:none">
-
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <h2 style="font-size:16px;font-weight:700;color:var(--on-surface)">Transaction History</h2>
-    <div style="display:flex;align-items:center;gap:8px">
-      <template x-if="categoryFilter">
-        <button class="chip chip-accent" @click="categoryFilter=null" style="cursor:pointer">
-          <span x-text="categoryFilter"></span> &times;
-        </button>
-      </template>
-      <button class="btn btn-danger" style="padding:5px 10px;font-size:11px" @click="clearHistory()">Clear All</button>
-    </div>
-  </div>
-
-  <!-- Skeleton -->
-  <template x-if="isLoading">
-    <div class="card">
-      <template x-for="i in 5">
-        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--outline-2)">
-          <div class="skeleton" style="width:36px;height:36px;border-radius:var(--r);flex-shrink:0"></div>
-          <div class="flex-1"><div class="skeleton" style="height:12px;width:55%;margin-bottom:5px"></div><div class="skeleton" style="height:10px;width:35%"></div></div>
-          <div class="skeleton" style="height:12px;width:65px"></div>
-        </div>
-      </template>
-    </div>
-  </template>
-
-  <!-- Loaded -->
-  <template x-if="!isLoading">
-    <div>
-      <template x-if="filteredTransactions.length===0">
-        <div class="empty-state">
-          <p class="empty-icon">🍃</p>
-          <p class="empty-title">No transactions found</p>
-          <p class="empty-sub" x-text="categoryFilter?'Clear filter to see all transactions':'Start by adding your first transaction'"></p>
-          <button class="btn btn-primary" style="margin-top:12px;padding:8px 20px" @click="showQuickAdd=true">+ New Entry</button>
-        </div>
-      </template>
-      <template x-if="filteredTransactions.length>0">
-        <div class="card" style="padding:0 16px">
-          <template x-for="t in filteredTransactions" :key="t.id">
-            <div class="swipe-container">
-              <div class="swipe-bg" @click.stop="deleteTransaction(t.id)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-              </div>
-              <div class="list-item"
-                x-data="{sw:0,sx:0}"
-                @touchstart.passive="sx=$event.touches[0].clientX"
-                @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
-                @touchend="sw<-35?sw=-56:sw=0"
-                :style="`background:var(--surface-0);position:relative;z-index:1;transform:translateX(${sw}px);transition:transform .2s`"
-                @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
-                <div class="list-icon" x-text="t.type==='income'?'💰':getCategoryIcon(t.category)"></div>
-                <div class="list-main">
-                  <p class="list-title" style="display:flex;align-items:center;gap:6px">
-                    <span x-text="t.category" @click.stop="categoryFilter=t.category;activeTab='history'"></span>
-                    <span x-show="t.isRecurring" class="chip chip-accent">AUTO</span>
-                  </p>
-                  <p class="list-sub" x-text="formatDate(t.date)"></p>
+        <!-- CONFIRM MODAL -->
+        <div class="modal-wrap" x-show="confirmModal.show" x-cloak @click.self="confirmModal.show=false"
+            style="display:none">
+            <div class="modal-box">
+                <p class="modal-title">Confirm Action</p>
+                <p class="modal-msg" x-text="confirmModal.msg"></p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary flex-1" @click="confirmModal.show=false">Cancel</button>
+                    <button class="btn btn-danger flex-1"
+                        @click="confirmModal.onConfirm && confirmModal.onConfirm()">Delete</button>
                 </div>
-                <div class="list-right">
-                  <p class="list-amount" :class="t.type==='income'?'pos':'neg'" x-text="(t.type==='income'?'+':'-')+formatRupiah(t.amount)"></p>
-                  <span class="chip chip-neutral" x-text="t.type==='income'?'INCOME':((budgets[t.category]?.type||'EXP').toUpperCase())"></span>
-                </div>
-              </div>
             </div>
-          </template>
         </div>
-      </template>
-    </div>
-  </template>
 
-</div><!-- /history tab -->
-
-<!-- ═══════════ PROFILE TAB ═══════════ -->
-<div class="tab-content custom-scroll" x-show="activeTab==='profile'" style="display:none">
-
-  <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="icon-btn" @click="activeTab='dashboard'" style="width:28px;height:28px;font-size:12px">←</button>
-      <h1 style="font-size:16px;font-weight:700;color:var(--on-surface)">Settings</h1>
-    </div>
-    <span style="font-size:14px;font-weight:700;color:var(--on-surface)">WealthyFlow</span>
-  </div>
-
-  <!-- APPEARANCE -->
-  <p class="section-label" style="margin-bottom:12px">Appearance</p>
-  <div class="card mb-12" style="padding:0">
-
-    <!-- Dark Mode -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2)">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">🌙</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Dark Mode</p>
-        <p style="font-size:11px;color:var(--outline);margin-top:1px">Adjust app visual theme</p>
-      </div>
-      <button @click="toggleDarkMode()" class="toggle-switch" :class="darkMode?'active':''">
-        <span class="toggle-knob"></span>
-      </button>
-    </div>
-
-    <!-- Accent Color -->
-    <div style="padding:14px 16px;border-bottom:1px solid var(--outline-2)">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div class="list-icon" style="width:32px;height:32px;font-size:14px">🎨</div>
-        <div>
-          <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Accent Color</p>
-          <p style="font-size:11px;color:var(--outline);margin-top:1px">Choose your primary brand tint</p>
+        <!-- CALCULATOR SHEET -->
+        <div class="overlay" x-show="showCalc" x-cloak @click.self="showCalc=false" style="display:none">
+            <div class="sheet" style="max-width:430px">
+                <div class="sheet-handle"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <p class="sheet-title" style="margin:0">Calculator</p>
+                    <button class="btn btn-ghost" @click="showCalc=false">✕</button>
+                </div>
+                <div class="calc-display">
+                    <div class="calc-expr" x-text="calcExpression||'&nbsp;'"></div>
+                    <div class="calc-num" x-text="calcDisplay"></div>
+                </div>
+                <div class="calc-grid">
+                    <button class="calc-key rst" @click="calcClear()">C</button>
+                    <button class="calc-key op" @click="calcOp('/')">÷</button>
+                    <button class="calc-key op" @click="calcOp('*')">×</button>
+                    <button class="calc-key op" @click="calcOp('-')">−</button>
+                    <template x-for="n in [7,8,9]"><button class="calc-key" @click="calcNum(String(n))"
+                            x-text="n"></button></template>
+                    <button class="calc-key op" @click="calcOp('+')">+</button>
+                    <template x-for="n in [4,5,6]"><button class="calc-key" @click="calcNum(String(n))"
+                            x-text="n"></button></template>
+                    <button class="calc-key eq" @click="calcSolve(); useCalcResult(); showCalc=false"
+                        style="grid-row:span 2">=</button>
+                    <template x-for="n in [1,2,3]"><button class="calc-key" @click="calcNum(String(n))"
+                            x-text="n"></button></template>
+                    <button class="calc-key" @click="calcNum('0')" style="grid-column:span 2">0</button>
+                    <button class="calc-key" @click="calcNum('.')">.</button>
+                </div>
+            </div>
         </div>
-      </div>
-      <div style="display:flex;gap:10px;padding-left:44px">
-        <template x-for="c in accentColors" :key="c.value">
-          <button @click="setAccentColor(c.value)"
-            :style="`width:32px;height:32px;border-radius:9999px;background:${c.value};border:3px solid ${accentColor===c.value?'var(--on-surface)':'transparent'};cursor:pointer;transition:border-color .15s;flex-shrink:0;outline:none;position:relative`"
-            :title="c.label">
-            <svg x-show="accentColor===c.value" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          </button>
-        </template>
-      </div>
-    </div>
 
-    <!-- Font Size -->
-    <div style="padding:14px 16px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div class="list-icon" style="width:32px;height:32px;font-size:14px;font-weight:700">Tt</div>
-        <div>
-          <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Font Size</p>
-          <p style="font-size:11px;color:var(--outline);margin-top:1px">Scale text for better legibility</p>
+        <!-- QUICK ADD SHEET -->
+        <div class="overlay" x-show="showQuickAdd" x-cloak @click.self="showQuickAdd=false;editingId=null"
+            style="display:none">
+            <div class="sheet" style="max-width:430px">
+                <div class="sheet-handle"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                    <p class="sheet-title" style="margin:0" x-text="editingId?'Edit Transaction':'New Entry'"></p>
+                    <button class="btn btn-ghost" @click="showQuickAdd=false;editingId=null">✕</button>
+                </div>
+                <div class="tab-toggle">
+                    <button class="tab-toggle-btn" :class="transactionType==='income'?'active':''"
+                        @click="transactionType='income'">Income</button>
+                    <button class="tab-toggle-btn" :class="transactionType==='expense'?'active':''"
+                        @click="transactionType='expense'">Expense</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)"
+                            class="input-field large flex-1" placeholder="Rp 0">
+                        <button class="btn btn-secondary btn-icon" @click="showCalc=true" title="Calculator"
+                            style="width:42px;height:42px">🧮</button>
+                    </div>
+                </div>
+                <div class="form-group" x-show="transactionType==='expense'">
+                    <label class="form-label">Category</label>
+                    <select x-model="newCategory" class="input-field">
+                        <option value="" disabled>Select category</option>
+                        <template x-for="cat in Object.keys(budgets)" :key="cat">
+                            <option :value="cat" x-text="getCategoryIcon(cat)+' '+cat"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="form-group" x-show="transactionType==='income'">
+                    <label class="form-label">Source</label>
+                    <input type="text" x-model="incomeSource" placeholder="Salary, Freelance…" class="input-field">
+                </div>
+                <button class="btn btn-primary btn-full" style="height:44px" @click="addTransaction()"
+                    x-text="editingId?'Update Transaction':'Save Transaction'"></button>
+            </div>
         </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding-left:44px">
-        <span style="font-size:11px;font-weight:600;color:var(--outline)">A</span>
-        <input type="range" min="11" max="20" step="1" :value="fontSize" @input="setFontSize($event.target.value)" class="range-slider" style="flex:1">
-        <span style="font-size:16px;font-weight:700;color:var(--outline)">A</span>
-      </div>
-      <p style="font-size:11px;color:var(--outline);text-align:center;margin-top:6px;padding-left:44px" x-text="fontSize + 'px — ' + (fontSize<=12?'Compact':(fontSize<=14?'Default':(fontSize<=16?'Medium':'Large')))"></p>
-    </div>
 
-  </div>
-
-  <!-- SECURITY & PRIVACY -->
-  <p class="section-label" style="margin-bottom:12px">Security & Privacy</p>
-  <div class="card mb-12" style="padding:0">
-
-    <!-- Backup & Restore -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="triggerImport()">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">🔄</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Backup & Restore</p>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Export Data -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="exportData()">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">📤</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Export Data (JSON)</p>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </div>
-
-    <!-- Clear All Data -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" @click="clearHistory()">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px;background:var(--error-container);border-color:transparent">🗑️</div>
-      <p style="font-size:13px;font-weight:600;color:var(--error)">Clear All Data</p>
-    </div>
-
-  </div>
-
-  <!-- GENERAL SETTINGS -->
-  <p class="section-label" style="margin-bottom:12px">General Settings</p>
-  <div class="card mb-12" style="padding:0">
-
-    <!-- Categories -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="showAddCategory=true">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">🏷️</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Manage Categories</p>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- Budget Ratios -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="showRatioSettings=true">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">📊</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Budget Ratio</p>
-        <p style="font-size:11px;color:var(--outline);margin-top:1px" x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings+' rule'"></p>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <!-- About -->
-    <div style="padding:14px 16px;border-bottom:1px solid var(--outline-2)">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="list-icon" style="width:32px;height:32px;font-size:14px">ℹ️</div>
-        <div>
-          <p style="font-size:13px;font-weight:600;color:var(--on-surface)">About WealthyFlow</p>
-          <p style="font-size:11px;color:var(--outline);margin-top:1px">Version 2.4.1-stable</p>
-          <p style="font-size:11px;color:var(--outline)">© 2024 WealthyFlow Engineering</p>
+        <!-- RATIO SETTINGS SHEET -->
+        <div class="overlay" x-show="showRatioSettings" x-cloak @click.self="showRatioSettings=false"
+            style="display:none">
+            <div class="sheet" style="max-width:430px">
+                <div class="sheet-handle"></div>
+                <p class="sheet-title">Budget Ratio (%)</p>
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                    <div class="flex-1">
+                        <label class="form-label">Needs</label>
+                        <input type="number" x-model.number="tempRatios.Needs" class="input-field">
+                    </div>
+                    <div class="flex-1">
+                        <label class="form-label">Wants</label>
+                        <input type="number" x-model.number="tempRatios.Wants" class="input-field">
+                    </div>
+                    <div class="flex-1">
+                        <label class="form-label">Savings</label>
+                        <input type="number" x-model.number="tempRatios.Savings" class="input-field">
+                    </div>
+                </div>
+                <p style="font-size:12px;margin-bottom:12px"
+                    :style="(Number(tempRatios.Needs)+Number(tempRatios.Wants)+Number(tempRatios.Savings))===100?'color:var(--success)':'color:var(--error)'"
+                    x-text="'Total: '+(Number(tempRatios.Needs)+Number(tempRatios.Wants)+Number(tempRatios.Savings))+'%'">
+                </p>
+                <p x-show="ratioError" class="text-error" style="font-size:12px;margin-bottom:8px" x-text="ratioError">
+                </p>
+                <button class="btn btn-primary btn-full" style="height:44px" @click="saveRatios()">Save Ratio</button>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Help & FAQ -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">❓</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Help & FAQ</p>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-    </div>
+        <!-- ADD CATEGORY SHEET -->
+        <div class="overlay" x-show="showAddCategory" x-cloak @click.self="showAddCategory=false" style="display:none">
+            <div class="sheet" style="max-width:430px">
+                <div class="sheet-handle"></div>
+                <p class="sheet-title">Manage Categories</p>
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                    <input type="text" x-model="newCatName" placeholder="Category name" class="input-field flex-1">
+                    <select x-model="newCatType" class="input-field" style="width:110px">
+                        <option value="Needs">Needs</option>
+                        <option value="Wants">Wants</option>
+                        <option value="Savings">Savings</option>
+                    </select>
+                    <button class="btn btn-primary" style="height:40px;padding:0 14px"
+                        @click="addCategory()">Add</button>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <template x-for="(data,cat) in budgets" :key="cat">
+                        <div
+                            style="display:flex;align-items:center;gap:4px;background:var(--surface-1);border:1px solid var(--outline-2);border-radius:var(--r-sm);padding:3px 8px">
+                            <span style="font-size:12px;font-weight:500;color:var(--on-surface-2)"
+                                x-text="getCategoryIcon(cat)+' '+cat"></span>
+                            <button @click="deleteCategory(cat)"
+                                style="background:none;border:none;cursor:pointer;color:var(--error);font-size:14px;line-height:1;padding:0 2px">&times;</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
 
-    <!-- Feedback -->
-    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer">
-      <div class="list-icon" style="width:32px;height:32px;font-size:14px">💬</div>
-      <div class="flex-1">
-        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Feedback / Report Bug</p>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </div>
+        <!-- RECURRING SHEET -->
+        <div class="overlay" x-show="showRecurring" x-cloak @click.self="showRecurring=false" style="display:none">
+            <div class="sheet" style="max-width:430px">
+                <div class="sheet-handle"></div>
+                <p class="sheet-title">Add Recurring Bill</p>
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" x-model="newRecName" placeholder="Netflix, Rent…" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <input type="text" inputmode="numeric" x-model="newRecDisplay" @input="handleRecFormat($el)"
+                        placeholder="Rp 0" class="input-field large">
+                </div>
+                <div style="display:flex;gap:8px">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Due Date</label>
+                        <input type="date" x-model="newRecDate" class="input-field">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Type</label>
+                        <select x-model="newRecType" class="input-field">
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-full" style="height:44px"
+                    @click="addRecurring();showRecurring=false">Add Recurring</button>
+            </div>
+        </div>
 
-  </div>
+        <!-- GLOBAL LOADING STATE -->
+        <div x-show="isLoading" class="custom-scroll"
+            style="padding:16px;flex:1;display:flex;flex-direction:column;gap:16px;padding-top:calc(16px + env(safe-area-inset-top))">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div class="skeleton" style="width:120px;height:24px"></div>
+                <div class="skeleton" style="width:32px;height:32px;border-radius:var(--r-full)"></div>
+            </div>
+            <div class="skeleton" style="width:100%;height:140px;border-radius:var(--r-xl)"></div>
+            <div style="display:flex;gap:12px">
+                <div class="skeleton" style="flex:1;height:80px;border-radius:var(--r-lg)"></div>
+                <div class="skeleton" style="flex:1;height:80px;border-radius:var(--r-lg)"></div>
+            </div>
+            <div class="skeleton" style="width:100%;height:100px;border-radius:var(--r-lg)"></div>
+            <div class="skeleton" style="width:100%;height:60px;border-radius:var(--r-lg)"></div>
+        </div>
 
-</div><!-- /profile tab -->
+        <!-- MAIN UI WRAPPER -->
+        <div x-show="!isLoading" style="display:none;flex:1;flex-direction:column;position:relative">
 
-<!-- ═══════════ BOTTOM NAV ═══════════ -->
-<nav class="bottom-nav">
-  <button class="nav-item" :class="activeTab==='dashboard'?'active':''" @click="activeTab='dashboard'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
-    </svg>
-    <span>Dashboard</span>
-  </button>
-  <button class="nav-item" :class="activeTab==='cashflow'?'active':''" @click="activeTab='cashflow'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>
-    </svg>
-    <span>Cashflow</span>
-  </button>
-  <button class="nav-item" :class="activeTab==='savings'?'active':''" @click="activeTab='savings'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/>
-    </svg>
-    <span>Savings</span>
-  </button>
-  <button class="nav-item" :class="activeTab==='profile'?'active':''" @click="activeTab='profile'">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
-    </svg>
-    <span>Settings</span>
-  </button>
-</nav>
+            <!-- HEADER -->
+            <header class="app-header">
+                <div style="display:flex;flex-direction:column">
+                    <span
+                        style="font-size:10px;font-weight:600;color:var(--outline);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px"
+                        x-text="getGreeting()"></span>
+                    <span class="brand" style="line-height:1">WealthyFlow</span>
+                </div>
+                <div class="header-actions">
+                    <input type="file" id="importFile" @change="importData" class="hide-scrollbar" accept=".json"
+                        style="display:none">
+                    <button class="icon-btn" @click="document.getElementById('importFile').click()" title="Import Data">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                    </button>
+                    <button class="icon-btn" @click="exportData()" title="Export Data">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                    </button>
+                    <div class="avatar" @click="activeTab='profile'">W</div>
+                </div>
+            </header>
 
-</div><!-- /main ui wrapper -->
+            <!-- ALERTS BANNER -->
+            <div style="padding:0 16px;margin-top:8px" x-show="alerts.length>0">
+                <template x-for="a in alerts" :key="a.msg">
+                    <div class="alert-banner" :class="a.type==='critical'?'error':'warning'">
+                        <template x-if="a.type==='critical'">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </template>
+                        <template x-if="a.type!=='critical'">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                        </template>
+                        <p class="alert-msg" x-text="a.msg"></p>
+                    </div>
+                </template>
+            </div>
 
-</div><!-- /app -->
+            <!-- INSTALL PROMPT -->
+            <div x-show="showInstallPrompt" x-cloak
+                style="margin:8px 16px 0;background:var(--surface-0);border:1px solid var(--outline-2);border-radius:var(--r-lg);padding:12px;display:flex;align-items:center;gap:10px">
+                <div style="color:var(--primary)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                    </svg></div>
+                <p style="flex:1;font-size:12px;font-weight:500;color:var(--on-surface-2)">Install WealthyFlow for the
+                    best experience.</p>
+                <button class="btn btn-primary" style="padding:6px 12px;font-size:11px"
+                    @click="installPWA()">Install</button>
+                <button class="icon-btn" @click="showInstallPrompt=false" style="flex-shrink:0">✕</button>
+            </div>
+
+            <!-- ═══════════ DASHBOARD TAB ═══════════ -->
+            <div class="tab-content custom-scroll" x-show="activeTab==='dashboard'" style="display:none">
+
+                <!-- Smart Insight / Financial Health Score -->
+                <div class="card mb-12"
+                    style="border-radius:16px;padding:20px;border-color:var(--outline-2);box-shadow:0 4px 20px rgba(0,0,0,0.03)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                        <div>
+                            <p
+                                style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--outline);margin-bottom:2px">
+                                Financial Health</p>
+                            <div style="display:flex;align-items:baseline;gap:4px">
+                                <h1 style="font-size:42px;font-weight:700;letter-spacing:-0.04em;color:var(--on-surface);line-height:1"
+                                    x-text="healthScore.score"></h1>
+                                <span style="font-size:14px;color:var(--outline);font-weight:500">/ 100</span>
+                            </div>
+                        </div>
+                        <div
+                            style="width:56px;height:56px;border-radius:var(--r-full);background:var(--surface-1);display:flex;align-items:center;justify-content:center;border:1px solid var(--outline-2);color:var(--on-surface)">
+                            <template x-if="healthScore.score>=80">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                                    <path d="M4 22h16" />
+                                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                                </svg>
+                            </template>
+                            <template x-if="healthScore.score>=50 && healthScore.score<80">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                                    <polyline points="16 7 22 7 22 13" />
+                                </svg>
+                            </template>
+                            <template x-if="healthScore.score<50">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                                    <line x1="12" y1="9" x2="12" y2="13" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                </svg>
+                            </template>
+                        </div>
+                    </div>
+                    <div
+                        style="padding:14px;background:var(--surface-1);border-radius:12px;border:1px solid var(--outline-2)">
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                            <div style="color:var(--outline);margin-top:2px"><svg width="16" height="16"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5" />
+                                    <path d="M9 18h6" />
+                                    <path d="M10 22h4" />
+                                </svg></div>
+                            <p style="font-size:12px;color:var(--on-surface-2);line-height:1.45;font-weight:500;flex:1"
+                                x-text="healthScore.explanation"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Overview Header -->
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                    <div>
+                        <p class="section-label" style="margin-bottom:2px">Weekly Overview</p>
+                        <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)">
+                            Cashflow Momentum</h1>
+                    </div>
+                    <span class="chip chip-neutral" style="margin-top:2px">Latest</span>
+                </div>
+
+                <!-- Income / Expense tiles -->
+                <div class="stat-grid mb-12">
+                    <div class="stat-tile">
+                        <p class="stat-label">Total Income</p>
+                        <p class="stat-value text-success" style="font-size:15px" x-text="formatRupiah(totalIncome)">
+                        </p>
+                    </div>
+                    <div class="stat-tile">
+                        <p class="stat-label">Total Expenses</p>
+                        <p class="stat-value text-error" style="font-size:15px" x-text="formatRupiah(totalExpense)"></p>
+                    </div>
+                </div>
+
+                <!-- Suggestion banner -->
+                <template x-if="suggestions.length>0">
+                    <div class="alert-banner warning mb-12" style="margin-bottom:12px">
+                        <span style="font-size:14px">💡</span>
+                        <div class="flex-1">
+                            <p class="alert-msg" x-text="suggestions[0].message"></p>
+                            <div style="display:flex;gap:6px;margin-top:8px">
+                                <button class="btn"
+                                    style="background:var(--warning);color:#fff;padding:5px 12px;font-size:11px;border-radius:var(--r-sm)"
+                                    @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
+                                <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px"
+                                    @click="ignoreSuggestion()">Ignore</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Quick Add Button -->
+                <div style="margin-bottom:24px">
+                    <button class="btn btn-primary btn-full"
+                        style="height:48px;border-radius:12px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"
+                        @click="showQuickAdd=true;editingId=null">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add New Transaction
+                    </button>
+                </div>
+
+                <!-- Recent History -->
+                <div class="card mb-12">
+                    <div class="section-hd">
+                        <h2>Recent History</h2>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <template x-if="categoryFilter">
+                                <button class="chip chip-accent" @click="categoryFilter=null"
+                                    style="cursor:pointer;gap:4px">
+                                    <span x-text="categoryFilter"></span><span>&times;</span>
+                                </button>
+                            </template>
+                            <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px"
+                                @click="activeTab='history'">Filter ≡</button>
+                        </div>
+                    </div>
+                    <!-- Skeleton -->
+                    <template x-if="isLoading">
+                        <div>
+                            <template x-for="i in 3">
+                                <div
+                                    style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--outline-2)">
+                                    <div class="skeleton" style="width:36px;height:36px;border-radius:var(--r)"></div>
+                                    <div class="flex-1">
+                                        <div class="skeleton" style="height:12px;width:60%;margin-bottom:5px"></div>
+                                        <div class="skeleton" style="height:10px;width:40%"></div>
+                                    </div>
+                                    <div class="skeleton" style="height:12px;width:60px"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                    <!-- Items (last 5) -->
+                    <template x-if="!isLoading">
+                        <div>
+                            <template x-if="transactions.length===0">
+                                <div class="empty-state" style="padding:24px 0">
+                                    <p class="empty-icon">🍃</p>
+                                    <p class="empty-title">No transactions yet</p>
+                                    <p class="empty-sub">Tap New Entry to get started</p>
+                                </div>
+                            </template>
+                            <template x-for="t in filteredTransactions.slice(0,5)" :key="t.id">
+                                <div class="swipe-container">
+                                    <div class="swipe-bg" @click.stop="deleteTransaction(t.id)">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a"
+                                            stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6" />
+                                            <path d="M19 6l-1 14H6L5 6" />
+                                            <path d="M10 11v6" />
+                                            <path d="M14 11v6" />
+                                        </svg>
+                                    </div>
+                                    <div class="list-item" x-data="{sw:0,sx:0}"
+                                        @touchstart.passive="sx=$event.touches[0].clientX"
+                                        @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
+                                        @touchend="sw<-35?sw=-56:sw=0"
+                                        :style="`background:var(--surface-0);position:relative;z-index:1;border-radius:var(--r);transform:translateX(${sw}px);transition:transform .2s`"
+                                        @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
+                                        <div class="list-icon" style="color:var(--on-surface)"
+                                            x-html="getCategoryIcon(t.type==='income'?'income':t.category)"></div>
+                                        <div class="list-main">
+                                            <p class="list-title" x-text="t.category"
+                                                @click.stop="categoryFilter=t.category"></p>
+                                            <p class="list-sub"
+                                                x-text="formatDate(t.date)+(t.isRecurring?' · Auto':'')"></p>
+                                        </div>
+                                        <div class="list-right">
+                                            <p class="list-amount" :class="t.type==='income'?'pos':'neg'"
+                                                x-text="(t.type==='income'?'+':'-')+formatRupiah(t.amount)"></p>
+                                            <span class="chip" :class="t.type==='income'?'chip-success':'chip-neutral'"
+                                                x-text="t.type==='income'?'INCOME':(budgets[t.category]?.type||'').toUpperCase()||'EXPENSE'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="transactions.length>5">
+                                <button class="btn btn-ghost btn-full" style="margin-top:8px;font-size:12px"
+                                    @click="activeTab='history'">View All Transactions →</button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Quick Allocation -->
+                <div class="card mb-12">
+                    <div class="section-hd" style="margin-bottom:8px">
+                        <h2>Quick Allocation</h2>
+                        <button class="icon-btn" @click="showCalc=true" title="Calculator"
+                            style="width:28px;height:28px;color:var(--on-surface)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="16" height="20" x="4" y="2" rx="2" />
+                                <line x1="8" x2="16" y1="6" y2="6" />
+                                <line x1="16" x2="16" y1="14" y2="18" />
+                                <path d="M16 10h.01" />
+                                <path d="M12 10h.01" />
+                                <path d="M8 10h.01" />
+                                <path d="M12 14h.01" />
+                                <path d="M8 14h.01" />
+                                <path d="M12 18h.01" />
+                                <path d="M8 18h.01" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Amount</label>
+                        <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)"
+                            class="input-field large" placeholder="Rp 0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select x-model="newCategory" class="input-field">
+                            <option value="" disabled>Essentials</option>
+                            <template x-for="cat in Object.keys(budgets)" :key="cat">
+                                <option :value="cat" x-text="cat"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary btn-full" style="height:40px"
+                        @click="transactionType='expense';addTransaction()">Save</button>
+                </div>
+
+                <!-- Spending Trend Chart -->
+                <div class="card">
+                    <div class="section-hd">
+                        <h2>Spending Trend</h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                    </div>
+                    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+                </div>
+
+            </div><!-- /dashboard tab -->
+            <!-- ═══════════ CASHFLOW TAB ═══════════ -->
+            <div class="tab-content custom-scroll" x-show="activeTab==='cashflow'" style="display:none">
+
+                <!-- Safe to Spend Hero -->
+                <div class="card card-dark mb-12">
+                    <p
+                        style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:4px">
+                        Safe to Spend Today</p>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                        <p style="font-size:28px;font-weight:700;letter-spacing:-0.03em;color:var(--on-primary)"
+                            x-text="formatRupiah(safeToSpend.amount)"></p>
+                        <span class="chip"
+                            :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')"
+                            x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
+                            <p
+                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">
+                                Remaining Days</p>
+                            <p style="font-size:22px;font-weight:700;color:var(--on-primary)"
+                                x-text="safeToSpend.daysLeft"></p>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
+                            <p
+                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">
+                                End of Month Goal</p>
+                            <p style="font-size:14px;font-weight:700;color:var(--on-primary)"
+                                x-text="formatRupiah(getTypeSpending('Savings'))"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Income / Balance -->
+                <div class="stat-grid mb-12">
+                    <div class="stat-tile dark">
+                        <p class="stat-label">Monthly Income</p>
+                        <p class="stat-value" x-text="formatRupiah(monthlyIncome)"></p>
+                    </div>
+                    <div class="stat-tile">
+                        <p class="stat-label">Total Balance</p>
+                        <p class="stat-value" x-text="formatRupiah(totalSaldo)"></p>
+                    </div>
+                </div>
+
+                <!-- Cashflow Projection -->
+                <div class="card mb-12">
+                    <div class="section-hd">
+                        <h2>Cashflow Projection</h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="2">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                            <polyline points="17 6 23 6 23 12" />
+                        </svg>
+                    </div>
+                    <template x-if="projection.warning">
+                        <div class="alert-banner error mb-8" style="margin-bottom:8px">
+                            <span>⚠️</span>
+                            <p class="alert-msg" x-text="projection.warning"></p>
+                        </div>
+                    </template>
+                    <div class="proj-item">
+                        <div>
+                            <p class="proj-label">In 7 Days</p>
+                            <p class="proj-val" :class="projection.days7<0?'text-error':''"
+                                x-text="formatRupiah(projection.days7)"></p>
+                        </div>
+                        <span class="chip" :class="projection.days7<0?'chip-error':'chip-success'"
+                            x-text="projection.days7<0?'Negative':'Positive'"></span>
+                    </div>
+                    <div class="proj-item">
+                        <div>
+                            <p class="proj-label">In 30 Days</p>
+                            <p class="proj-val" :class="projection.days30<0?'text-error':''"
+                                x-text="formatRupiah(projection.days30)"></p>
+                        </div>
+                        <span class="chip" :class="projection.days30<0?'chip-error':'chip-success'"
+                            x-text="projection.days30<0?'Negative':'Positive'"></span>
+                    </div>
+                </div>
+
+                <!-- Balance Over Time Chart -->
+                <div class="card mb-12">
+                    <div class="section-hd">
+                        <h2>Balance Over Time</h2>
+                    </div>
+                    <div class="chart-wrap" style="height:130px"><canvas id="lineChart"></canvas></div>
+                </div>
+
+                <!-- Pie Distribution -->
+                <div class="card">
+                    <div class="section-hd">
+                        <h2>Expense Distribution</h2>
+                    </div>
+                    <div style="height:170px"><canvas id="pieChart"></canvas></div>
+                </div>
+
+            </div><!-- /cashflow tab -->
+
+            <!-- ═══════════ SAVINGS TAB ═══════════ -->
+            <div class="tab-content custom-scroll" x-show="activeTab==='savings'" style="display:none">
+
+                <!-- Auto-Saving System -->
+                <div class="card mb-12">
+                    <div class="section-hd">
+                        <h2>Auto-Saving System</h2>
+                        <div style="display:flex;gap:6px">
+                            <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
+                                @click="showRatioSettings=true">Ratio</button>
+                            <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
+                                @click="showAddCategory=true">Category</button>
+                        </div>
+                    </div>
+                    <p style="font-size:12px;color:var(--outline);margin-bottom:12px">Allocated based on your <span
+                            style="font-weight:600;color:var(--on-surface)"
+                            x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
+                    <template x-if="suggestions.length>0">
+                        <div class="alert-banner warning mb-12" style="margin-bottom:12px">
+                            <span>💡</span>
+                            <div class="flex-1">
+                                <p class="alert-msg" x-text="suggestions[0].message"></p>
+                                <div style="display:flex;gap:6px;margin-top:8px">
+                                    <button class="btn"
+                                        style="background:var(--warning);color:#fff;padding:4px 10px;font-size:11px;border-radius:var(--r-sm)"
+                                        @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
+                                    <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px"
+                                        @click="ignoreSuggestion()">Ignore</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-for="type in ['Needs','Wants','Savings']" :key="type">
+                        <div class="saving-item">
+                            <div class="saving-item-hd">
+                                <div>
+                                    <p class="saving-name" x-text="type"></p>
+                                    <p class="saving-ratio" x-text="'RATIO: '+ratios[type]+'%'"></p>
+                                </div>
+                                <p class="saving-amount" x-text="formatRupiah(getTypeSpending(type))"></p>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill"
+                                    :style="'width:'+Math.min(getTypePercent(type),100)+'%;'+(type==='Needs'?'background:var(--accent)':(type==='Wants'?'background:var(--warning-bg);filter:brightness(0.7)':'background:var(--success)'))">
+                                </div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-top:4px">
+                                <p style="font-size:10px;color:var(--outline);font-weight:500"
+                                    x-text="getTypePercent(type)+'% used'"></p>
+                                <p style="font-size:10px;color:var(--outline);font-weight:500"
+                                    x-text="'Limit '+formatRupiah(getAutoBudgetLimit(type))"></p>
+                            </div>
+                            <p style="font-size:12px;color:var(--on-surface-2);margin-top:4px"
+                                x-text="type==='Needs'?'Essential living expenses and bills.':(type==='Wants'?'Lifestyle, hobbies, and entertainment.':'Emergency fund and future investments.')">
+                            </p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Financial Health -->
+                <div class="card mb-12">
+                    <div class="section-hd">
+                        <h2>Financial Health</h2>
+                        <span class="chip"
+                            :class="healthScore.score<=40?'chip-error':(healthScore.score<=70?'chip-warning':'chip-success')"
+                            x-text="healthScore.status"></span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+                        <div class="health-ring-wrap">
+                            <svg viewBox="0 0 64 64">
+                                <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6" />
+                                <circle cx="32" cy="32" r="27" fill="none" stroke-width="6" stroke-dasharray="170"
+                                    :stroke-dashoffset="isLoading?170:(170-(170*healthScore.score/100))"
+                                    :stroke="healthScore.score<=40?'var(--error)':(healthScore.score<=70?'#d97706':'var(--success)')"
+                                    stroke-linecap="round" style="transition:stroke-dashoffset 1s ease" />
+                            </svg>
+                            <div class="health-ring-center">
+                                <span class="health-score" x-text="healthScore.score"></span>
+                                <span class="health-score-label">Score</span>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;color:var(--on-surface-2);line-height:1.5"
+                                x-text="healthScore.explanation"></p>
+                        </div>
+                    </div>
+                    <div
+                        style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--outline-2);border:1px solid var(--outline-2);border-radius:var(--r);overflow:hidden">
+                        <div style="background:var(--surface-0);padding:10px;text-align:center">
+                            <p
+                                style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">
+                                Saving</p>
+                            <p style="font-size:13px;font-weight:700;color:var(--success);margin-top:2px"
+                                x-text="healthScore.breakdown.savingsRate+'%'"></p>
+                        </div>
+                        <div style="background:var(--surface-0);padding:10px;text-align:center">
+                            <p
+                                style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">
+                                Wants</p>
+                            <p style="font-size:13px;font-weight:700;margin-top:2px"
+                                :class="healthScore.breakdown.wantsLevel==='High'?'text-error':'text-success'"
+                                x-text="healthScore.breakdown.wantsLevel"></p>
+                        </div>
+                        <div style="background:var(--surface-0);padding:10px;text-align:center">
+                            <p
+                                style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">
+                                Stable</p>
+                            <p style="font-size:13px;font-weight:700;margin-top:2px"
+                                :class="healthScore.breakdown.consistency==='Stable'?'text-success':'text-error'"
+                                x-text="healthScore.breakdown.consistency==='Stable'?'Yes':'No'"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recurring Bills -->
+                <div class="card">
+                    <div class="section-hd">
+                        <h2>Recurring Bills</h2>
+                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
+                            @click="showRecurring=true">+ Add</button>
+                    </div>
+                    <template x-if="recurringTransactions.length===0">
+                        <div class="empty-state" style="padding:16px 0">
+                            <p class="empty-title">No recurring bills</p>
+                            <p class="empty-sub">Add bills that repeat monthly</p>
+                        </div>
+                    </template>
+                    <template x-for="r in sortedRecurring" :key="r.id">
+                        <div class="list-item">
+                            <div class="list-icon" style="color:var(--on-surface)" x-html="getCategoryIcon(r.name)">
+                            </div>
+                            <div class="list-main">
+                                <p class="list-title" x-text="r.name"></p>
+                                <p class="list-sub" :class="getDueDateStatus(r.nextDate)"
+                                    x-text="getDueText(r.nextDate)+' · '+formatDate(r.nextDate)"></p>
+                            </div>
+                            <div class="list-right">
+                                <p class="list-amount" :class="r.type==='income'?'pos':'neg'"
+                                    x-text="(r.type==='income'?'+':'-')+formatRupiah(r.amount)"></p>
+                                <button @click="deleteRecurring(r.id)"
+                                    style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--error);font-weight:600;margin-top:2px">Remove</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+            </div><!-- /savings tab -->
+
+            <!-- ═══════════ HISTORY TAB ═══════════ -->
+            <div class="tab-content custom-scroll" x-show="activeTab==='history'" style="display:none">
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                    <h2 style="font-size:16px;font-weight:700;color:var(--on-surface)">Transaction History</h2>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <template x-if="categoryFilter">
+                            <button class="chip chip-accent" @click="categoryFilter=null" style="cursor:pointer">
+                                <span x-text="categoryFilter"></span> &times;
+                            </button>
+                        </template>
+                        <button class="btn btn-danger" style="padding:5px 10px;font-size:11px"
+                            @click="clearHistory()">Clear All</button>
+                    </div>
+                </div>
+
+                <!-- Skeleton -->
+                <template x-if="isLoading">
+                    <div class="card">
+                        <template x-for="i in 5">
+                            <div
+                                style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--outline-2)">
+                                <div class="skeleton"
+                                    style="width:36px;height:36px;border-radius:var(--r);flex-shrink:0"></div>
+                                <div class="flex-1">
+                                    <div class="skeleton" style="height:12px;width:55%;margin-bottom:5px"></div>
+                                    <div class="skeleton" style="height:10px;width:35%"></div>
+                                </div>
+                                <div class="skeleton" style="height:12px;width:65px"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Loaded -->
+                <template x-if="!isLoading">
+                    <div>
+                        <template x-if="filteredTransactions.length===0">
+                            <div class="empty-state">
+                                <div style="color:var(--outline);margin-bottom:8px;display:flex;justify-content:center">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2v20" />
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                    </svg></div>
+                                <p class="empty-title">No transactions found</p>
+                                <p class="empty-sub"
+                                    x-text="categoryFilter?'Clear filter to see all transactions':'Start by adding your first transaction'">
+                                </p>
+                                <button class="btn btn-primary" style="margin-top:12px;padding:8px 20px"
+                                    @click="showQuickAdd=true">+ New Entry</button>
+                            </div>
+                        </template>
+                        <template x-if="filteredTransactions.length>0">
+                            <div class="card" style="padding:0 16px">
+                                <template x-for="t in filteredTransactions" :key="t.id">
+                                    <div class="swipe-container">
+                                        <div class="swipe-bg" @click.stop="deleteTransaction(t.id)">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a"
+                                                stroke-width="2">
+                                                <polyline points="3 6 5 6 21 6" />
+                                                <path d="M19 6l-1 14H6L5 6" />
+                                                <path d="M10 11v6" />
+                                                <path d="M14 11v6" />
+                                            </svg>
+                                        </div>
+                                        <div class="list-item" x-data="{sw:0,sx:0}"
+                                            @touchstart.passive="sx=$event.touches[0].clientX"
+                                            @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
+                                            @touchend="sw<-35?sw=-56:sw=0"
+                                            :style="`background:var(--surface-0);position:relative;z-index:1;transform:translateX(${sw}px);transition:transform .2s`"
+                                            @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
+                                            <div class="list-icon" style="color:var(--on-surface)"
+                                                x-html="getCategoryIcon(t.type==='income'?'income':t.category)"></div>
+                                            <div class="list-main">
+                                                <p class="list-title" style="display:flex;align-items:center;gap:6px">
+                                                    <span x-text="t.category"
+                                                        @click.stop="categoryFilter=t.category;activeTab='history'"></span>
+                                                    <span x-show="t.isRecurring" class="chip chip-accent">AUTO</span>
+                                                </p>
+                                                <p class="list-sub" x-text="formatDate(t.date)"></p>
+                                            </div>
+                                            <div class="list-right">
+                                                <p class="list-amount" :class="t.type==='income'?'pos':'neg'"
+                                                    x-text="(t.type==='income'?'+':'-')+formatRupiah(t.amount)"></p>
+                                                <span class="chip chip-neutral"
+                                                    x-text="t.type==='income'?'INCOME':((budgets[t.category]?.type||'EXP').toUpperCase())"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+            </div><!-- /history tab -->
+
+            <!-- ═══════════ PROFILE TAB ═══════════ -->
+            <div class="tab-content custom-scroll" x-show="activeTab==='profile'" style="display:none">
+
+                <!-- Header -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <button class="icon-btn" @click="activeTab='dashboard'" style="width:28px;height:28px"
+                            title="Back">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m12 19-7-7 7-7" />
+                                <path d="M19 12H5" />
+                            </svg>
+                        </button>
+                        <h1 style="font-size:16px;font-weight:700;color:var(--on-surface)">Settings</h1>
+                    </div>
+                    <span style="font-size:14px;font-weight:700;color:var(--on-surface)">WealthyFlow</span>
+                </div>
+
+                <!-- APPEARANCE -->
+                <p class="section-label" style="margin-bottom:12px">Appearance</p>
+                <div class="card mb-12" style="padding:0">
+
+                    <!-- Dark Mode -->
+                    <div
+                        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Dark Mode</p>
+                            <p style="font-size:11px;color:var(--outline);margin-top:1px">Adjust app visual theme</p>
+                        </div>
+                        <button @click="toggleDarkMode()" class="toggle-switch" :class="darkMode?'active':''">
+                            <span class="toggle-knob"></span>
+                        </button>
+                    </div>
+
+                    <!-- Accent Color -->
+                    <div style="padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                            <div class="list-icon" style="width:32px;height:32px">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+                                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+                                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+                                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+                                    <path
+                                        d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Accent Color</p>
+                                <p style="font-size:11px;color:var(--outline);margin-top:1px">Choose your primary brand
+                                    tint</p>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;padding-left:44px">
+                            <template x-for="c in accentColors" :key="c.value">
+                                <button @click="setAccentColor(c.value)"
+                                    :style="`width:32px;height:32px;border-radius:9999px;background:${c.value};border:3px solid ${accentColor===c.value?'var(--on-surface)':'transparent'};cursor:pointer;transition:border-color .15s;flex-shrink:0;outline:none;position:relative`"
+                                    :title="c.label">
+                                    <svg x-show="accentColor===c.value"
+                                        style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"
+                                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Font Size -->
+                    <div style="padding:14px 16px">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                            <div class="list-icon" style="width:32px;height:32px;font-size:14px;font-weight:700">Tt
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Font Size</p>
+                                <p style="font-size:11px;color:var(--outline);margin-top:1px">Scale text for better
+                                    legibility</p>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;padding-left:44px">
+                            <span style="font-size:11px;font-weight:600;color:var(--outline)">A</span>
+                            <input type="range" min="11" max="20" step="1" :value="fontSize"
+                                @input="setFontSize($event.target.value)" class="range-slider" style="flex:1">
+                            <span style="font-size:16px;font-weight:700;color:var(--outline)">A</span>
+                        </div>
+                        <p style="font-size:11px;color:var(--outline);text-align:center;margin-top:6px;padding-left:44px"
+                            x-text="fontSize + 'px — ' + (fontSize<=12?'Compact':(fontSize<=14?'Default':(fontSize<=16?'Medium':'Large')))">
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- SECURITY & PRIVACY -->
+                <p class="section-label" style="margin-bottom:12px">Security & Privacy</p>
+                <div class="card mb-12" style="padding:0">
+
+                    <!-- Backup & Restore -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
+                        @click="triggerImport()">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2v6h-6" />
+                                <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                                <path d="M3 22v-6h6" />
+                                <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Backup & Restore</p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </div>
+
+                    <!-- Export Data -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
+                        @click="exportData()">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Export Data (JSON)</p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                    </div>
+
+                    <!-- Clear All Data -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer"
+                        @click="clearHistory()">
+                        <div class="list-icon"
+                            style="width:32px;height:32px;background:var(--error-container);color:var(--error);border-color:transparent">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                        </div>
+                        <p style="font-size:13px;font-weight:600;color:var(--error)">Clear All Data</p>
+                    </div>
+
+                </div>
+
+                <!-- GENERAL SETTINGS -->
+                <p class="section-label" style="margin-bottom:12px">General Settings</p>
+                <div class="card mb-12" style="padding:0">
+
+                    <!-- Categories -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
+                        @click="showAddCategory=true">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="m21.2 12.3-9 9a2.12 2.12 0 0 1-3 0L3.3 15.4a2.12 2.12 0 0 1 0-3l9-9A2.12 2.12 0 0 1 14.8 3h4.6a2 2 0 0 1 2 2v4.6a2.12 2.12 0 0 1-.2 1.7Z" />
+                                <circle cx="16.5" cy="7.5" r=".5" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Manage Categories</p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </div>
+
+                    <!-- Budget Ratios -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
+                        @click="showRatioSettings=true">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="4" height="16" x="4" y="5" rx="1" />
+                                <rect width="4" height="11" x="10" y="10" rx="1" />
+                                <rect width="4" height="7" x="16" y="14" rx="1" />
+                                <line x1="2" y1="22" x2="22" y2="22" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Budget Ratio</p>
+                            <p style="font-size:11px;color:var(--outline);margin-top:1px"
+                                x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings+' rule'"></p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </div>
+
+                    <!-- About -->
+                    <div style="padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <div class="list-icon" style="width:32px;height:32px">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4" />
+                                    <path d="M12 8h.01" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)">About WealthyFlow</p>
+                                <p style="font-size:11px;color:var(--outline);margin-top:1px">Version 2.4.1-stable</p>
+                                <p style="font-size:11px;color:var(--outline)">© 2024 WealthyFlow Engineering</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Help & FAQ -->
+                    <div
+                        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                <path d="M12 17h.01" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Help & FAQ</p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                    </div>
+
+                    <!-- Feedback -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Feedback / Report Bug</p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                    </div>
+
+                </div>
+
+            </div><!-- /profile tab -->
+
+            <!-- ═══════════ BOTTOM NAV ═══════════ -->
+            <nav class="bottom-nav">
+                <button class="nav-item" :class="activeTab==='dashboard'?'active':''" @click="activeTab='dashboard'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect width="7" height="9" x="3" y="3" rx="1" />
+                        <rect width="7" height="5" x="14" y="3" rx="1" />
+                        <rect width="7" height="9" x="14" y="12" rx="1" />
+                        <rect width="7" height="5" x="3" y="16" rx="1" />
+                    </svg>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" :class="activeTab==='cashflow'?'active':''" @click="activeTab='cashflow'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M8 3 4 7l4 4" />
+                        <path d="M4 7h16" />
+                        <path d="m16 21 4-4-4-4" />
+                        <path d="M20 17H4" />
+                    </svg>
+                    <span>Cashflow</span>
+                </button>
+                <button class="nav-item" :class="activeTab==='savings'?'active':''" @click="activeTab='savings'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z" />
+                        <path d="M2 9v1c0 1.1.9 2 2 2h1" />
+                        <path d="M16 11h.01" />
+                    </svg>
+                    <span>Savings</span>
+                </button>
+                <button class="nav-item" :class="activeTab==='profile'?'active':''" @click="activeTab='profile'">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>Settings</span>
+                </button>
+            </nav>
+
+        </div><!-- /main ui wrapper -->
+
+    </div><!-- /app -->
 </body>
+
 </html>

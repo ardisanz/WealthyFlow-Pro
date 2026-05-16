@@ -777,12 +777,24 @@ function moneyApp() {
 
         getCategoryIcon(catName) {
             let n = catName.toLowerCase();
-            if (n.includes('makan') || n.includes('food')) return '🍔';
-            if (n.includes('transport') || n.includes('mobil')) return '🚌';
-            if (n.includes('bill') || n.includes('tagihan') || n.includes('listrik')) return '🧾';
-            if (n.includes('hiburan') || n.includes('main') || n.includes('netflix')) return '🎬';
-            if (n.includes('gaji') || n.includes('income')) return '💰';
-            return '🏷️';
+            const svgAttrs = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+            
+            if (n.includes('makan') || n.includes('food') || n.includes('groceries') || n.includes('dining')) 
+                return `<svg ${svgAttrs}><path d="M12 2C8.686 2 6 4.686 6 8v1h12V8c0-3.314-2.686-6-6-6Z"/><path d="M4 11h16v2H4z"/><path d="M5 15h14l-1 6H6l-1-6Z"/></svg>`; // Burger-ish/Food
+            if (n.includes('transport') || n.includes('mobil') || n.includes('car')) 
+                return `<svg ${svgAttrs}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`; // Car
+            if (n.includes('bill') || n.includes('tagihan') || n.includes('listrik') || n.includes('utilit')) 
+                return `<svg ${svgAttrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>`; // File/Bill
+            if (n.includes('hiburan') || n.includes('main') || n.includes('netflix') || n.includes('entertain')) 
+                return `<svg ${svgAttrs}><rect width="20" height="20" x="2" y="2" rx="2.18" ry="2.18"/><line x1="7" x2="7" y1="2" y2="22"/><line x1="17" x2="17" y1="2" y2="22"/><line x1="2" x2="22" y1="12" y2="12"/><line x1="2" x2="7" y1="7" y2="7"/><line x1="2" x2="7" y1="17" y2="17"/><line x1="17" x2="22" y1="17" y2="17"/><line x1="17" x2="22" y1="7" y2="7"/></svg>`; // Film
+            if (n.includes('gaji') || n.includes('income') || n.includes('salary')) 
+                return `<svg ${svgAttrs}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>`; // Credit Card / Money
+            if (n.includes('invest')) 
+                return `<svg ${svgAttrs}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`; // Trending Up
+            if (n.includes('hous') || n.includes('rent')) 
+                return `<svg ${svgAttrs}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`; // Home
+            
+            return `<svg ${svgAttrs}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`; // Default
         },
 
         saveData() {
