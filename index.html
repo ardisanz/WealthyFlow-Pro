@@ -177,12 +177,19 @@
 
 <!-- HEADER -->
 <header class="app-header">
-  <span class="brand">WealthyFlow</span>
+  <div style="display:flex;flex-direction:column">
+    <span style="font-size:10px;font-weight:600;color:var(--outline);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px" x-text="getGreeting()"></span>
+    <span class="brand" style="line-height:1">WealthyFlow</span>
+  </div>
   <div class="header-actions">
     <input type="file" id="importFile" @change="importData" class="hide-scrollbar" accept=".json" style="display:none">
-    <button class="icon-btn" @click="document.getElementById('importFile').click()" title="Import">⬆</button>
-    <button class="icon-btn" @click="exportData()" title="Export">⬇</button>
-    <div class="avatar">W</div>
+    <button class="icon-btn" @click="document.getElementById('importFile').click()" title="Import Data">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </button>
+    <button class="icon-btn" @click="exportData()" title="Export Data">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <div class="avatar" @click="activeTab='profile'">W</div>
   </div>
 </header>
 
