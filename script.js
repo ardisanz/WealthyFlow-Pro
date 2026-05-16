@@ -1,4 +1,4 @@
-/* WEALTHYFLOW PRO - CORE LOGIC */
+/* WEALTHYFLOW - CORE LOGIC */
 
 // --- PURE JS LOGIC ---
 const FinanceLogic = {
@@ -228,7 +228,6 @@ function moneyApp() {
         newCategory: '',
         incomeSource: '',
         editingId: null, // For click-to-edit feature
-        isMobile() { return window.innerWidth < 768; },
 
         // Categories
         showAddCategory: false,
@@ -273,6 +272,20 @@ function moneyApp() {
         calcExpression: '',
         charts: { pie: null, line: null, bar: null },
 
+        // Settings
+        darkMode: false,
+        accentColor: '#000000',
+        fontSize: 14,
+        accentColors: [
+            { value: '#000000', label: 'Slate' },
+            { value: '#1a56db', label: 'Blue' },
+            { value: '#1a6b3a', label: 'Green' },
+            { value: '#0e7490', label: 'Teal' },
+            { value: '#be123c', label: 'Rose' },
+            { value: '#db2777', label: 'Pink' },
+            { value: '#7c3aed', label: 'Violet' }
+        ],
+
 
         // --- INITIALIZATION ---
         init() {
@@ -295,7 +308,14 @@ function moneyApp() {
                 document.querySelectorAll('button, .touch-target').forEach(btn => {
                     btn.addEventListener('click', () => window.haptic(15));
                 });
-            }, 800); // Wait for alpine to render
+            }, 800);
+
+            // Load settings
+            this.darkMode = JSON.parse(localStorage.getItem('pro_darkMode')) || false;
+            this.accentColor = localStorage.getItem('pro_accentColor') || '#000000';
+            this.fontSize = JSON.parse(localStorage.getItem('pro_fontSize')) || 14;
+            this.applyTheme();
+            this.applyFontSize();
 
             this.budgets = JSON.parse(localStorage.getItem('pro_budgets')) || {
                 "Food": { type: "Needs" },
@@ -363,7 +383,14 @@ function moneyApp() {
 
             this.$nextTick(() => {
                 this.renderCharts();
-                setTimeout(() => { this.isLoading = false; }, 600); // Simulate loading skeleton
+                setTimeout(() => { this.isLoading = false; }, 600);
+            });
+
+            // Re-render charts when switching to chart tabs
+            this.$watch('activeTab', (tab) => {
+                if (tab === 'cashflow' || tab === 'dashboard') {
+                    this.$nextTick(() => this.renderCharts());
+                }
             });
         },
 
@@ -745,7 +772,114 @@ function moneyApp() {
             }, 2500);
         },
 
+        // --- SETTINGS ---
+        toggleDarkMode() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem('pro_darkMode', JSON.stringify(this.darkMode));
+            this.applyTheme();
+            this.pushNote(this.darkMode ? 'Dark mode enabled' : 'Light mode enabled');
+            // Re-render charts with new theme colors
+            this.$nextTick(() => this.renderCharts());
+        },
+
+        applyTheme() {
+            const root = document.documentElement;
+            if (this.darkMode) {
+                root.style.setProperty('--bg', '#0D0D0D');
+                root.style.setProperty('--surface-0', '#1A1A1A');
+                root.style.setProperty('--surface-1', '#222222');
+                root.style.setProperty('--surface-2', '#2A2A2A');
+                root.style.setProperty('--surface-3', '#333333');
+                root.style.setProperty('--on-surface', '#EAEAEA');
+                root.style.setProperty('--on-surface-2', '#AAAAAA');
+                root.style.setProperty('--outline', '#666666');
+                root.style.setProperty('--outline-2', '#333333');
+                root.style.setProperty('--primary-container', '#1E293B');
+                root.style.setProperty('--on-primary-container', '#94A3B8');
+                root.style.setProperty('--on-primary', '#FFFFFF');
+                root.style.setProperty('--secondary', '#94A3B8');
+                root.style.setProperty('--secondary-container', '#1E293B');
+                root.style.setProperty('--on-secondary-container', '#CBD5E1');
+                root.style.setProperty('--error-container', '#3B1212');
+                root.style.setProperty('--success-bg', '#0D2818');
+                root.style.setProperty('--accent-bg', '#172554');
+                root.style.setProperty('--warning-bg', '#2A1800');
+                root.setAttribute('data-theme', 'dark');
+            } else {
+                root.style.setProperty('--bg', '#f7f9fb');
+                root.style.setProperty('--surface-0', '#ffffff');
+                root.style.setProperty('--surface-1', '#f2f4f6');
+                root.style.setProperty('--surface-2', '#eceef0');
+                root.style.setProperty('--surface-3', '#e6e8ea');
+                root.style.setProperty('--on-surface', '#191c1e');
+                root.style.setProperty('--on-surface-2', '#45464d');
+                root.style.setProperty('--outline', '#76777d');
+                root.style.setProperty('--outline-2', '#c6c6cd');
+                root.style.setProperty('--primary-container', '#131b2e');
+                root.style.setProperty('--on-primary-container', '#7c839b');
+                root.style.setProperty('--on-primary', '#ffffff');
+                root.style.setProperty('--secondary', '#505f76');
+                root.style.setProperty('--secondary-container', '#d0e1fb');
+                root.style.setProperty('--on-secondary-container', '#54647a');
+                root.style.setProperty('--error-container', '#ffdad6');
+                root.style.setProperty('--success-bg', '#d6f0e0');
+                root.style.setProperty('--accent-bg', '#dbeafe');
+                root.style.setProperty('--warning-bg', '#fef3c7');
+                root.removeAttribute('data-theme');
+            }
+            // Apply accent color after theme
+            this.applyAccentColor();
+        },
+
+        setAccentColor(color) {
+            this.accentColor = color;
+            localStorage.setItem('pro_accentColor', color);
+            this.applyAccentColor();
+            this.pushNote('Accent color updated');
+        },
+
+        applyAccentColor() {
+            const root = document.documentElement;
+            root.style.setProperty('--primary', this.accentColor);
+            root.style.setProperty('--accent', this.accentColor); // Update accent as well
+
+            // Generate a lighter tint for backgrounds/buttons
+            const hex = this.accentColor.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            
+            // On-primary stays white for dark colors, black for light
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            const onPrimary = luminance > 0.5 ? '#000000' : '#ffffff';
+            const onPrimaryMuted = luminance > 0.5 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)';
+            
+            root.style.setProperty('--on-primary', onPrimary);
+            
+            // Also update the container cards so they fully reflect the accent color!
+            root.style.setProperty('--primary-container', this.accentColor);
+            root.style.setProperty('--on-primary-container', onPrimaryMuted);
+            
+            // Re-render charts so they use the new accent color
+            this.$nextTick(() => this.renderCharts());
+        },
+
+        setFontSize(size) {
+            this.fontSize = Number(size);
+            localStorage.setItem('pro_fontSize', JSON.stringify(this.fontSize));
+            this.applyFontSize();
+        },
+
+        applyFontSize() {
+            const root = document.documentElement;
+            const scale = this.fontSize / 14; // 14px is the base
+            [9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28].forEach(size => {
+                root.style.setProperty(`--font-${size}`, `calc(${size}px * ${scale})`);
+            });
+        },
+
         installPWA() {
+
             if (this.deferredPrompt) {
                 this.deferredPrompt.prompt();
                 this.deferredPrompt.userChoice.then((choiceResult) => {
@@ -761,7 +895,22 @@ function moneyApp() {
         },
 
         renderCharts() {
-            let data = FinanceLogic.buildChartData(this.transactions, this.budgets);
+            if (!document.getElementById('pieChart')) return;
+            const data = FinanceLogic.buildChartData(this.transactions, this.budgets);
+            const rootStyle = getComputedStyle(document.documentElement);
+            const accentHex = rootStyle.getPropertyValue('--accent').trim() || '#1a56db';
+
+            // Convert hex to rgb for background
+            let r=26, g=86, b=219;
+            if (accentHex.length === 7) {
+                r = parseInt(accentHex.slice(1,3), 16);
+                g = parseInt(accentHex.slice(3,5), 16);
+                b = parseInt(accentHex.slice(5,7), 16);
+            }
+            const accentRgba = `rgba(${r},${g},${b},0.08)`;
+            const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#000000';
+            const surfaceColor = rootStyle.getPropertyValue('--surface-0').trim() || '#ffffff';
+            const outlineColor = rootStyle.getPropertyValue('--outline-2').trim() || '#c6c6cd';
 
             const ctxPie = document.getElementById('pieChart');
             if (ctxPie) {
@@ -772,16 +921,16 @@ function moneyApp() {
                         labels: ['Needs', 'Wants', 'Savings'],
                         datasets: [{
                             data: [data.pie.Needs, data.pie.Wants, data.pie.Savings],
-                            backgroundColor: ['#7AAACE', '#fbbf24', '#34d399'],
+                            backgroundColor: [accentHex, '#92400e', '#1a6b3a'],
                             borderWidth: 2,
-                            borderColor: '#F7F8F0'
+                            borderColor: surfaceColor
                         }]
                     },
                     options: { 
                         responsive: true, 
                         maintainAspectRatio: false, 
-                        plugins: { 
-                            legend: { position: 'bottom', labels: { color: '#5a7d96' } } 
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: '#45464d', font: { size: 11, family: 'Inter' } } }
                         },
                         onClick: (evt, elements) => {
                             if (elements.length > 0) {
@@ -806,13 +955,13 @@ function moneyApp() {
                         datasets: [{
                             label: 'Balance',
                             data: data.line.map(d => d.y),
-                            borderColor: '#355872',
+                            borderColor: accentHex,
                             tension: 0.3,
                             fill: true,
-                            backgroundColor: 'rgba(53, 88, 114, 0.08)'
+                            backgroundColor: accentRgba
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a9ea8' } }, y: { ticks: { color: '#8a9ea8' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { color: '#eceef0' } }, y: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { color: '#eceef0' } } } }
                 });
             }
 
@@ -828,11 +977,11 @@ function moneyApp() {
                         datasets: [{
                             label: 'Expenses/Week',
                             data: weekVals,
-                            backgroundColor: '#7AAACE',
+                            backgroundColor: weekVals.map((v, i) => i === weekVals.indexOf(Math.max(...weekVals)) ? primaryColor : outlineColor),
                             borderRadius: 4
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a9ea8' } }, y: { ticks: { color: '#8a9ea8' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { color: '#eceef0' } } } }
                 });
             }
         },

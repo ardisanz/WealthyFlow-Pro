@@ -1,569 +1,804 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>WealthyFlow Pro - Strategic Budgeting</title>
-
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#F7F8F0">
-
-    <link rel="stylesheet" href="css/tailwind.css">
-    <script defer src="js/alpine.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap"
-        rel="stylesheet">
-    <script src="js/chart.min.js"></script>
-
-    <link rel="stylesheet" href="style.css">
-    <script src="script.js"></script>
-
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>WealthyFlow</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
 </head>
+<body x-data="moneyApp()" x-init="init()">
+<div id="app">
 
-<body x-data="moneyApp()" class="antialiased min-h-screen transition-colors duration-300"
-    style="background-color:#F7F8F0; color:#355872;">
+<!-- TOAST -->
+<div class="toast-wrap" style="top:calc(16px + env(safe-area-inset-top))">
+  <template x-for="n in notifications" :key="n.id">
+    <div class="toast fade-in"><span>✓</span><span x-text="n.msg"></span></div>
+  </template>
+</div>
 
-    <!-- Notifications -->
-    <div class="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm space-y-3 pointer-events-none">
-        <template x-for="note in notifications" :key="note.id">
-            <div x-transition
-                class="bg-white border-l-4 border-[#7AAACE] p-4 rounded-xl shadow-xl flex items-center gap-3">
-                <span class="text-[#7AAACE] font-bold">✓</span>
-                <p class="text-sm font-bold text-[#355872]" x-text="note.msg"></p>
-            </div>
-        </template>
+<!-- CONFIRM MODAL -->
+<div class="modal-wrap" x-show="confirmModal.show" x-cloak @click.self="confirmModal.show=false" style="display:none">
+  <div class="modal-box">
+    <p class="modal-title">Confirm Action</p>
+    <p class="modal-msg" x-text="confirmModal.msg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary flex-1" @click="confirmModal.show=false">Cancel</button>
+      <button class="btn btn-danger flex-1" @click="confirmModal.onConfirm && confirmModal.onConfirm()">Delete</button>
     </div>
+  </div>
+</div>
 
-    <!-- PWA Install Prompt -->
-    <div x-show="showInstallPrompt" x-cloak x-transition
-        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-sm bg-[#355872] text-white p-4 rounded-2xl shadow-2xl flex md:hidden items-center justify-between gap-4">
+<!-- CALCULATOR SHEET -->
+<div class="overlay" x-show="showCalc" x-cloak @click.self="showCalc=false" style="display:none">
+  <div class="sheet" style="max-width:430px">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <p class="sheet-title" style="margin:0">Calculator</p>
+      <button class="btn btn-ghost" @click="showCalc=false">✕</button>
+    </div>
+    <div class="calc-display">
+      <div class="calc-expr" x-text="calcExpression||'&nbsp;'"></div>
+      <div class="calc-num" x-text="calcDisplay"></div>
+    </div>
+    <div class="calc-grid">
+      <button class="calc-key rst" @click="calcClear()">C</button>
+      <button class="calc-key op" @click="calcOp('/')">÷</button>
+      <button class="calc-key op" @click="calcOp('*')">×</button>
+      <button class="calc-key op" @click="calcOp('-')">−</button>
+      <template x-for="n in [7,8,9]"><button class="calc-key" @click="calcNum(String(n))" x-text="n"></button></template>
+      <button class="calc-key op" @click="calcOp('+')">+</button>
+      <template x-for="n in [4,5,6]"><button class="calc-key" @click="calcNum(String(n))" x-text="n"></button></template>
+      <button class="calc-key eq" @click="calcSolve(); useCalcResult(); showCalc=false" style="grid-row:span 2">=</button>
+      <template x-for="n in [1,2,3]"><button class="calc-key" @click="calcNum(String(n))" x-text="n"></button></template>
+      <button class="calc-key" @click="calcNum('0')" style="grid-column:span 2">0</button>
+      <button class="calc-key" @click="calcNum('.')">.</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ADD SHEET -->
+<div class="overlay" x-show="showQuickAdd" x-cloak @click.self="showQuickAdd=false;editingId=null" style="display:none">
+  <div class="sheet" style="max-width:430px">
+    <div class="sheet-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <p class="sheet-title" style="margin:0" x-text="editingId?'Edit Transaction':'New Entry'"></p>
+      <button class="btn btn-ghost" @click="showQuickAdd=false;editingId=null">✕</button>
+    </div>
+    <div class="tab-toggle">
+      <button class="tab-toggle-btn" :class="transactionType==='income'?'active':''" @click="transactionType='income'">Income</button>
+      <button class="tab-toggle-btn" :class="transactionType==='expense'?'active':''" @click="transactionType='expense'">Expense</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)" class="input-field large flex-1" placeholder="Rp 0">
+        <button class="btn btn-secondary btn-icon" @click="showCalc=true" title="Calculator" style="width:42px;height:42px">🧮</button>
+      </div>
+    </div>
+    <div class="form-group" x-show="transactionType==='expense'">
+      <label class="form-label">Category</label>
+      <select x-model="newCategory" class="input-field">
+        <option value="" disabled>Select category</option>
+        <template x-for="cat in Object.keys(budgets)" :key="cat"><option :value="cat" x-text="getCategoryIcon(cat)+' '+cat"></option></template>
+      </select>
+    </div>
+    <div class="form-group" x-show="transactionType==='income'">
+      <label class="form-label">Source</label>
+      <input type="text" x-model="incomeSource" placeholder="Salary, Freelance…" class="input-field">
+    </div>
+    <button class="btn btn-primary btn-full" style="height:44px" @click="addTransaction()" x-text="editingId?'Update Transaction':'Save Transaction'"></button>
+  </div>
+</div>
+
+<!-- RATIO SETTINGS SHEET -->
+<div class="overlay" x-show="showRatioSettings" x-cloak @click.self="showRatioSettings=false" style="display:none">
+  <div class="sheet" style="max-width:430px">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Budget Ratio (%)</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div class="flex-1">
+        <label class="form-label">Needs</label>
+        <input type="number" x-model.number="tempRatios.Needs" class="input-field">
+      </div>
+      <div class="flex-1">
+        <label class="form-label">Wants</label>
+        <input type="number" x-model.number="tempRatios.Wants" class="input-field">
+      </div>
+      <div class="flex-1">
+        <label class="form-label">Savings</label>
+        <input type="number" x-model.number="tempRatios.Savings" class="input-field">
+      </div>
+    </div>
+    <p style="font-size:12px;margin-bottom:12px" :style="(Number(tempRatios.Needs)+Number(tempRatios.Wants)+Number(tempRatios.Savings))===100?'color:var(--success)':'color:var(--error)'" x-text="'Total: '+(Number(tempRatios.Needs)+Number(tempRatios.Wants)+Number(tempRatios.Savings))+'%'"></p>
+    <p x-show="ratioError" class="text-error" style="font-size:12px;margin-bottom:8px" x-text="ratioError"></p>
+    <button class="btn btn-primary btn-full" style="height:44px" @click="saveRatios()">Save Ratio</button>
+  </div>
+</div>
+
+<!-- ADD CATEGORY SHEET -->
+<div class="overlay" x-show="showAddCategory" x-cloak @click.self="showAddCategory=false" style="display:none">
+  <div class="sheet" style="max-width:430px">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Manage Categories</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" x-model="newCatName" placeholder="Category name" class="input-field flex-1">
+      <select x-model="newCatType" class="input-field" style="width:110px">
+        <option value="Needs">Needs</option>
+        <option value="Wants">Wants</option>
+        <option value="Savings">Savings</option>
+      </select>
+      <button class="btn btn-primary" style="height:40px;padding:0 14px" @click="addCategory()">Add</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <template x-for="(data,cat) in budgets" :key="cat">
+        <div style="display:flex;align-items:center;gap:4px;background:var(--surface-1);border:1px solid var(--outline-2);border-radius:var(--r-sm);padding:3px 8px">
+          <span style="font-size:12px;font-weight:500;color:var(--on-surface-2)" x-text="getCategoryIcon(cat)+' '+cat"></span>
+          <button @click="deleteCategory(cat)" style="background:none;border:none;cursor:pointer;color:var(--error);font-size:14px;line-height:1;padding:0 2px">&times;</button>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- RECURRING SHEET -->
+<div class="overlay" x-show="showRecurring" x-cloak @click.self="showRecurring=false" style="display:none">
+  <div class="sheet" style="max-width:430px">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Add Recurring Bill</p>
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input type="text" x-model="newRecName" placeholder="Netflix, Rent…" class="input-field">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input type="text" inputmode="numeric" x-model="newRecDisplay" @input="handleRecFormat($el)" placeholder="Rp 0" class="input-field large">
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-group flex-1">
+        <label class="form-label">Due Date</label>
+        <input type="date" x-model="newRecDate" class="input-field">
+      </div>
+      <div class="form-group flex-1">
+        <label class="form-label">Type</label>
+        <select x-model="newRecType" class="input-field">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" style="height:44px" @click="addRecurring();showRecurring=false">Add Recurring</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="app-header">
+  <span class="brand">WealthyFlow</span>
+  <div class="header-actions">
+    <input type="file" id="importFile" @change="importData" class="hide-scrollbar" accept=".json" style="display:none">
+    <button class="icon-btn" @click="document.getElementById('importFile').click()" title="Import">⬆</button>
+    <button class="icon-btn" @click="exportData()" title="Export">⬇</button>
+    <div class="avatar">W</div>
+  </div>
+</header>
+
+<!-- ALERTS BANNER -->
+<div style="padding:0 16px;margin-top:8px" x-show="alerts.length>0">
+  <template x-for="a in alerts" :key="a.msg">
+    <div class="alert-banner" :class="a.type==='critical'?'error':'warning'">
+      <span style="font-size:14px" x-text="a.type==='critical'?'🔴':'⚠️'"></span>
+      <p class="alert-msg" x-text="a.msg"></p>
+    </div>
+  </template>
+</div>
+
+<!-- INSTALL PROMPT -->
+<div x-show="showInstallPrompt" x-cloak style="margin:8px 16px 0;background:var(--surface-0);border:1px solid var(--outline-2);border-radius:var(--r-lg);padding:12px;display:flex;align-items:center;gap:10px">
+  <span style="font-size:20px">📲</span>
+  <p style="flex:1;font-size:12px;font-weight:500;color:var(--on-surface-2)">Install WealthyFlow for the best experience.</p>
+  <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" @click="installPWA()">Install</button>
+  <button class="icon-btn" @click="showInstallPrompt=false" style="flex-shrink:0">✕</button>
+</div>
+
+<!-- ═══════════ DASHBOARD TAB ═══════════ -->
+<div class="tab-content custom-scroll" x-show="activeTab==='dashboard'" style="display:none">
+
+  <!-- Weekly Overview Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+    <div>
+      <p class="section-label" style="margin-bottom:2px">Weekly Overview</p>
+      <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)">Cashflow Momentum</h1>
+    </div>
+    <span class="chip chip-neutral" style="margin-top:2px">Latest</span>
+  </div>
+
+  <!-- Income / Expense tiles -->
+  <div class="stat-grid mb-12">
+    <div class="stat-tile">
+      <p class="stat-label">Total Income</p>
+      <p class="stat-value text-success" style="font-size:15px" x-text="formatRupiah(totalIncome)"></p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Total Expenses</p>
+      <p class="stat-value text-error" style="font-size:15px" x-text="formatRupiah(totalExpense)"></p>
+    </div>
+  </div>
+
+  <!-- Suggestion banner -->
+  <template x-if="suggestions.length>0">
+    <div class="alert-banner warning mb-12" style="margin-bottom:12px">
+      <span style="font-size:14px">💡</span>
+      <div class="flex-1">
+        <p class="alert-msg" x-text="suggestions[0].message"></p>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn" style="background:var(--warning);color:#fff;padding:5px 12px;font-size:11px;border-radius:var(--r-sm)" @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" @click="ignoreSuggestion()">Ignore</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Add Transaction Card -->
+  <div class="card mb-12" style="background:var(--primary-container);border-color:#2a3450">
+    <p style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:2px">Add Transaction</p>
+    <p style="font-size:13px;color:var(--on-primary-container);margin-bottom:12px">Record your secure spending now</p>
+    <button class="btn btn-primary btn-full" style="height:40px;background:var(--on-primary);color:var(--primary-container)" @click="showQuickAdd=true;editingId=null">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Entry
+    </button>
+  </div>
+
+  <!-- Recent History -->
+  <div class="card mb-12">
+    <div class="section-hd">
+      <h2>Recent History</h2>
+      <div style="display:flex;align-items:center;gap:8px">
+        <template x-if="categoryFilter">
+          <button class="chip chip-accent" @click="categoryFilter=null" style="cursor:pointer;gap:4px">
+            <span x-text="categoryFilter"></span><span>&times;</span>
+          </button>
+        </template>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" @click="activeTab='history'">Filter ≡</button>
+      </div>
+    </div>
+    <!-- Skeleton -->
+    <template x-if="isLoading">
+      <div>
+        <template x-for="i in 3">
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--outline-2)">
+            <div class="skeleton" style="width:36px;height:36px;border-radius:var(--r)"></div>
+            <div class="flex-1"><div class="skeleton" style="height:12px;width:60%;margin-bottom:5px"></div><div class="skeleton" style="height:10px;width:40%"></div></div>
+            <div class="skeleton" style="height:12px;width:60px"></div>
+          </div>
+        </template>
+      </div>
+    </template>
+    <!-- Items (last 5) -->
+    <template x-if="!isLoading">
+      <div>
+        <template x-if="transactions.length===0">
+          <div class="empty-state" style="padding:24px 0">
+            <p class="empty-icon">🍃</p>
+            <p class="empty-title">No transactions yet</p>
+            <p class="empty-sub">Tap New Entry to get started</p>
+          </div>
+        </template>
+        <template x-for="t in filteredTransactions.slice(0,5)" :key="t.id">
+          <div class="swipe-container">
+            <div class="swipe-bg" @click.stop="deleteTransaction(t.id)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </div>
+            <div class="list-item"
+              x-data="{sw:0,sx:0}"
+              @touchstart.passive="sx=$event.touches[0].clientX"
+              @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
+              @touchend="sw<-35?sw=-56:sw=0"
+              :style="`background:var(--surface-0);position:relative;z-index:1;border-radius:var(--r);transform:translateX(${sw}px);transition:transform .2s`"
+              @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
+              <div class="list-icon" x-text="t.type==='income'?'💰':getCategoryIcon(t.category)"></div>
+              <div class="list-main">
+                <p class="list-title" x-text="t.category" @click.stop="categoryFilter=t.category"></p>
+                <p class="list-sub" x-text="formatDate(t.date)+(t.isRecurring?' · Auto':'')"></p>
+              </div>
+              <div class="list-right">
+                <p class="list-amount" :class="t.type==='income'?'pos':'neg'" x-text="(t.type==='income'?'+':'-')+formatRupiah(t.amount)"></p>
+                <span class="chip" :class="t.type==='income'?'chip-success':'chip-neutral'" x-text="t.type==='income'?'INCOME':(budgets[t.category]?.type||'').toUpperCase()||'EXPENSE'"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template x-if="transactions.length>5">
+          <button class="btn btn-ghost btn-full" style="margin-top:8px;font-size:12px" @click="activeTab='history'">View All Transactions →</button>
+        </template>
+      </div>
+    </template>
+  </div>
+
+  <!-- Quick Allocation -->
+  <div class="card mb-12">
+    <div class="section-hd" style="margin-bottom:8px">
+      <h2>Quick Allocation</h2>
+      <button class="icon-btn" @click="showCalc=true" title="Calculator" style="width:28px;height:28px;font-size:12px">🧮</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)" class="input-field large" placeholder="Rp 0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select x-model="newCategory" class="input-field">
+        <option value="" disabled>Essentials</option>
+        <template x-for="cat in Object.keys(budgets)" :key="cat"><option :value="cat" x-text="getCategoryIcon(cat)+' '+cat"></option></template>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full" style="height:40px" @click="transactionType='expense';addTransaction()">Save</button>
+  </div>
+
+  <!-- Spending Trend Chart -->
+  <div class="card">
+    <div class="section-hd">
+      <h2>Spending Trend</h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+  </div>
+
+</div><!-- /dashboard tab -->
+<!-- ═══════════ CASHFLOW TAB ═══════════ -->
+<div class="tab-content custom-scroll" x-show="activeTab==='cashflow'" style="display:none">
+
+  <!-- Safe to Spend Hero -->
+  <div class="card card-dark mb-12">
+    <p style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:4px">Safe to Spend Today</p>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <p style="font-size:28px;font-weight:700;letter-spacing:-0.03em;color:var(--on-primary)" x-text="formatRupiah(safeToSpend.amount)"></p>
+      <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')"
+        x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
+        <p style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Remaining Days</p>
+        <p style="font-size:22px;font-weight:700;color:var(--on-primary)" x-text="safeToSpend.daysLeft"></p>
+      </div>
+      <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
+        <p style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">End of Month Goal</p>
+        <p style="font-size:14px;font-weight:700;color:var(--on-primary)" x-text="formatRupiah(getTypeSpending('Savings'))"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Income / Balance -->
+  <div class="stat-grid mb-12">
+    <div class="stat-tile dark">
+      <p class="stat-label">Monthly Income</p>
+      <p class="stat-value" x-text="formatRupiah(monthlyIncome)"></p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Total Balance</p>
+      <p class="stat-value" x-text="formatRupiah(totalSaldo)"></p>
+    </div>
+  </div>
+
+  <!-- Cashflow Projection -->
+  <div class="card mb-12">
+    <div class="section-hd">
+      <h2>Cashflow Projection</h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    </div>
+    <template x-if="projection.warning">
+      <div class="alert-banner error mb-8" style="margin-bottom:8px">
+        <span>⚠️</span><p class="alert-msg" x-text="projection.warning"></p>
+      </div>
+    </template>
+    <div class="proj-item">
+      <div>
+        <p class="proj-label">In 7 Days</p>
+        <p class="proj-val" :class="projection.days7<0?'text-error':''" x-text="formatRupiah(projection.days7)"></p>
+      </div>
+      <span class="chip" :class="projection.days7<0?'chip-error':'chip-success'" x-text="projection.days7<0?'Negative':'Positive'"></span>
+    </div>
+    <div class="proj-item">
+      <div>
+        <p class="proj-label">In 30 Days</p>
+        <p class="proj-val" :class="projection.days30<0?'text-error':''" x-text="formatRupiah(projection.days30)"></p>
+      </div>
+      <span class="chip" :class="projection.days30<0?'chip-error':'chip-success'" x-text="projection.days30<0?'Negative':'Positive'"></span>
+    </div>
+  </div>
+
+  <!-- Balance Over Time Chart -->
+  <div class="card mb-12">
+    <div class="section-hd"><h2>Balance Over Time</h2></div>
+    <div class="chart-wrap" style="height:130px"><canvas id="lineChart"></canvas></div>
+  </div>
+
+  <!-- Pie Distribution -->
+  <div class="card">
+    <div class="section-hd"><h2>Expense Distribution</h2></div>
+    <div style="height:170px"><canvas id="pieChart"></canvas></div>
+  </div>
+
+</div><!-- /cashflow tab -->
+
+<!-- ═══════════ SAVINGS TAB ═══════════ -->
+<div class="tab-content custom-scroll" x-show="activeTab==='savings'" style="display:none">
+
+  <!-- Auto-Saving System -->
+  <div class="card mb-12">
+    <div class="section-hd">
+      <h2>Auto-Saving System</h2>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" @click="showRatioSettings=true">Ratio</button>
+        <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" @click="showAddCategory=true">Category</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--outline);margin-bottom:12px">Allocated based on your <span style="font-weight:600;color:var(--on-surface)" x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
+    <template x-if="suggestions.length>0">
+      <div class="alert-banner warning mb-12" style="margin-bottom:12px">
+        <span>💡</span>
         <div class="flex-1">
-            <p class="font-bold text-sm">Install WealthyFlow PRO</p>
-            <p class="text-xs opacity-80">Get a better experience, offline support, and app-like feel.</p>
+          <p class="alert-msg" x-text="suggestions[0].message"></p>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn" style="background:var(--warning);color:#fff;padding:4px 10px;font-size:11px;border-radius:var(--r-sm)" @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
+            <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" @click="ignoreSuggestion()">Ignore</button>
+          </div>
         </div>
-        <button @click="installPWA()"
-            class="bg-white text-[#355872] px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#F7F8F0] transition shadow-md whitespace-nowrap">Install</button>
-        <button @click="showInstallPrompt = false" class="text-white/60 hover:text-white p-1">✕</button>
-    </div>
+      </div>
+    </template>
+    <template x-for="type in ['Needs','Wants','Savings']" :key="type">
+      <div class="saving-item">
+        <div class="saving-item-hd">
+          <div>
+            <p class="saving-name" x-text="type"></p>
+            <p class="saving-ratio" x-text="'RATIO: '+ratios[type]+'%'"></p>
+          </div>
+          <p class="saving-amount" x-text="formatRupiah(getTypeSpending(type))"></p>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill"
+            :style="'width:'+Math.min(getTypePercent(type),100)+'%;'+(type==='Needs'?'background:var(--accent)':(type==='Wants'?'background:var(--warning-bg);filter:brightness(0.7)':'background:var(--success)'))"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <p style="font-size:10px;color:var(--outline);font-weight:500" x-text="getTypePercent(type)+'% used'"></p>
+          <p style="font-size:10px;color:var(--outline);font-weight:500" x-text="'Limit '+formatRupiah(getAutoBudgetLimit(type))"></p>
+        </div>
+        <p style="font-size:12px;color:var(--on-surface-2);margin-top:4px"
+          x-text="type==='Needs'?'Essential living expenses and bills.':(type==='Wants'?'Lifestyle, hobbies, and entertainment.':'Emergency fund and future investments.')"></p>
+      </div>
+    </template>
+  </div>
 
-    <!-- Offline Banner -->
-    <div x-show="!isOnline" x-cloak x-transition
-        class="fixed top-0 left-0 right-0 z-[120] bg-rose-500 text-white text-center py-1 text-xs font-bold tracking-widest uppercase shadow-md">
-        ⚠️ You are offline
+  <!-- Financial Health -->
+  <div class="card mb-12">
+    <div class="section-hd">
+      <h2>Financial Health</h2>
+      <span class="chip" :class="healthScore.score<=40?'chip-error':(healthScore.score<=70?'chip-warning':'chip-success')" x-text="healthScore.status"></span>
     </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+      <div class="health-ring-wrap">
+        <svg viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+          <circle cx="32" cy="32" r="27" fill="none" stroke-width="6"
+            stroke-dasharray="170"
+            :stroke-dashoffset="isLoading?170:(170-(170*healthScore.score/100))"
+            :stroke="healthScore.score<=40?'var(--error)':(healthScore.score<=70?'#d97706':'var(--success)')"
+            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease"/>
+        </svg>
+        <div class="health-ring-center">
+          <span class="health-score" x-text="healthScore.score"></span>
+          <span class="health-score-label">Score</span>
+        </div>
+      </div>
+      <div class="flex-1">
+        <p style="font-size:13px;color:var(--on-surface-2);line-height:1.5" x-text="healthScore.explanation"></p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--outline-2);border:1px solid var(--outline-2);border-radius:var(--r);overflow:hidden">
+      <div style="background:var(--surface-0);padding:10px;text-align:center">
+        <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">Saving</p>
+        <p style="font-size:13px;font-weight:700;color:var(--success);margin-top:2px" x-text="healthScore.breakdown.savingsRate+'%'"></p>
+      </div>
+      <div style="background:var(--surface-0);padding:10px;text-align:center">
+        <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">Wants</p>
+        <p style="font-size:13px;font-weight:700;margin-top:2px" :class="healthScore.breakdown.wantsLevel==='High'?'text-error':'text-success'" x-text="healthScore.breakdown.wantsLevel"></p>
+      </div>
+      <div style="background:var(--surface-0);padding:10px;text-align:center">
+        <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">Stable</p>
+        <p style="font-size:13px;font-weight:700;margin-top:2px" :class="healthScore.breakdown.consistency==='Stable'?'text-success':'text-error'" x-text="healthScore.breakdown.consistency==='Stable'?'Yes':'No'"></p>
+      </div>
+    </div>
+  </div>
 
-    <!-- Alerts Banner -->
-    <div class="fixed top-24 left-1/2 -translate-x-1/2 z-[80] w-[90%] max-w-lg space-y-2 pointer-events-auto">
-        <template x-for="alert in alerts" :key="alert.msg">
-            <div x-transition :class="alert.type === 'critical' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'"
-                class="p-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 backdrop-blur-md">
-                <span class="text-xl" x-text="alert.type === 'critical' ? '🚨' : '⚠️'"></span>
-                <div class="flex-1">
-                    <p class="text-xs font-black uppercase tracking-widest opacity-80" x-text="alert.type"></p>
-                    <p class="text-sm font-bold" x-text="alert.msg"></p>
+  <!-- Recurring Bills -->
+  <div class="card">
+    <div class="section-hd">
+      <h2>Recurring Bills</h2>
+      <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" @click="showRecurring=true">+ Add</button>
+    </div>
+    <template x-if="recurringTransactions.length===0">
+      <div class="empty-state" style="padding:16px 0">
+        <p class="empty-title">No recurring bills</p>
+        <p class="empty-sub">Add bills that repeat monthly</p>
+      </div>
+    </template>
+    <template x-for="r in sortedRecurring" :key="r.id">
+      <div class="list-item">
+        <div class="list-icon" x-text="getCategoryIcon(r.name)"></div>
+        <div class="list-main">
+          <p class="list-title" x-text="r.name"></p>
+          <p class="list-sub" :class="getDueDateStatus(r.nextDate)" x-text="getDueText(r.nextDate)+' · '+formatDate(r.nextDate)"></p>
+        </div>
+        <div class="list-right">
+          <p class="list-amount" :class="r.type==='income'?'pos':'neg'" x-text="(r.type==='income'?'+':'-')+formatRupiah(r.amount)"></p>
+          <button @click="deleteRecurring(r.id)" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--error);font-weight:600;margin-top:2px">Remove</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+</div><!-- /savings tab -->
+
+<!-- ═══════════ HISTORY TAB ═══════════ -->
+<div class="tab-content custom-scroll" x-show="activeTab==='history'" style="display:none">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2 style="font-size:16px;font-weight:700;color:var(--on-surface)">Transaction History</h2>
+    <div style="display:flex;align-items:center;gap:8px">
+      <template x-if="categoryFilter">
+        <button class="chip chip-accent" @click="categoryFilter=null" style="cursor:pointer">
+          <span x-text="categoryFilter"></span> &times;
+        </button>
+      </template>
+      <button class="btn btn-danger" style="padding:5px 10px;font-size:11px" @click="clearHistory()">Clear All</button>
+    </div>
+  </div>
+
+  <!-- Skeleton -->
+  <template x-if="isLoading">
+    <div class="card">
+      <template x-for="i in 5">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--outline-2)">
+          <div class="skeleton" style="width:36px;height:36px;border-radius:var(--r);flex-shrink:0"></div>
+          <div class="flex-1"><div class="skeleton" style="height:12px;width:55%;margin-bottom:5px"></div><div class="skeleton" style="height:10px;width:35%"></div></div>
+          <div class="skeleton" style="height:12px;width:65px"></div>
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <!-- Loaded -->
+  <template x-if="!isLoading">
+    <div>
+      <template x-if="filteredTransactions.length===0">
+        <div class="empty-state">
+          <p class="empty-icon">🍃</p>
+          <p class="empty-title">No transactions found</p>
+          <p class="empty-sub" x-text="categoryFilter?'Clear filter to see all transactions':'Start by adding your first transaction'"></p>
+          <button class="btn btn-primary" style="margin-top:12px;padding:8px 20px" @click="showQuickAdd=true">+ New Entry</button>
+        </div>
+      </template>
+      <template x-if="filteredTransactions.length>0">
+        <div class="card" style="padding:0 16px">
+          <template x-for="t in filteredTransactions" :key="t.id">
+            <div class="swipe-container">
+              <div class="swipe-bg" @click.stop="deleteTransaction(t.id)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ba1a1a" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              </div>
+              <div class="list-item"
+                x-data="{sw:0,sx:0}"
+                @touchstart.passive="sx=$event.touches[0].clientX"
+                @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
+                @touchend="sw<-35?sw=-56:sw=0"
+                :style="`background:var(--surface-0);position:relative;z-index:1;transform:translateX(${sw}px);transition:transform .2s`"
+                @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
+                <div class="list-icon" x-text="t.type==='income'?'💰':getCategoryIcon(t.category)"></div>
+                <div class="list-main">
+                  <p class="list-title" style="display:flex;align-items:center;gap:6px">
+                    <span x-text="t.category" @click.stop="categoryFilter=t.category;activeTab='history'"></span>
+                    <span x-show="t.isRecurring" class="chip chip-accent">AUTO</span>
+                  </p>
+                  <p class="list-sub" x-text="formatDate(t.date)"></p>
                 </div>
-                <button @click="alerts = alerts.filter(a => a.msg !== alert.msg)"
-                    class="text-white/60 hover:text-white">✕</button>
+                <div class="list-right">
+                  <p class="list-amount" :class="t.type==='income'?'pos':'neg'" x-text="(t.type==='income'?'+':'-')+formatRupiah(t.amount)"></p>
+                  <span class="chip chip-neutral" x-text="t.type==='income'?'INCOME':((budgets[t.category]?.type||'EXP').toUpperCase())"></span>
+                </div>
+              </div>
             </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
 
+</div><!-- /history tab -->
+
+<!-- ═══════════ PROFILE TAB ═══════════ -->
+<div class="tab-content custom-scroll" x-show="activeTab==='profile'" style="display:none">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="icon-btn" @click="activeTab='dashboard'" style="width:28px;height:28px;font-size:12px">←</button>
+      <h1 style="font-size:16px;font-weight:700;color:var(--on-surface)">Settings</h1>
+    </div>
+    <span style="font-size:14px;font-weight:700;color:var(--on-surface)">WealthyFlow</span>
+  </div>
+
+  <!-- APPEARANCE -->
+  <p class="section-label" style="margin-bottom:12px">Appearance</p>
+  <div class="card mb-12" style="padding:0">
+
+    <!-- Dark Mode -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">🌙</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Dark Mode</p>
+        <p style="font-size:11px;color:var(--outline);margin-top:1px">Adjust app visual theme</p>
+      </div>
+      <button @click="toggleDarkMode()" class="toggle-switch" :class="darkMode?'active':''">
+        <span class="toggle-knob"></span>
+      </button>
+    </div>
+
+    <!-- Accent Color -->
+    <div style="padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div class="list-icon" style="width:32px;height:32px;font-size:14px">🎨</div>
+        <div>
+          <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Accent Color</p>
+          <p style="font-size:11px;color:var(--outline);margin-top:1px">Choose your primary brand tint</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;padding-left:44px">
+        <template x-for="c in accentColors" :key="c.value">
+          <button @click="setAccentColor(c.value)"
+            :style="`width:32px;height:32px;border-radius:9999px;background:${c.value};border:3px solid ${accentColor===c.value?'var(--on-surface)':'transparent'};cursor:pointer;transition:border-color .15s;flex-shrink:0;outline:none;position:relative`"
+            :title="c.label">
+            <svg x-show="accentColor===c.value" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
         </template>
+      </div>
     </div>
 
-    <!-- Custom Confirmation Modal -->
-    <div x-show="confirmModal.show" x-cloak
-        class="fixed inset-0 bg-black/40 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-        <div @click.away="activeTab = 'dashboard'; confirmModal.show = false" x-transition
-            class="bg-white w-full max-w-xs rounded-[20px] p-8 text-center shadow-2xl">
-            <div
-                class="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-                ❓</div>
-            <h3 class="text-lg font-bold text-[#355872] mb-2">Are you sure?</h3>
-            <p class="text-xs text-[#5a7d96] mb-8" x-text="confirmModal.msg"></p>
-            <div class="flex gap-3">
-                <button @click="confirmModal.show = false"
-                    class="flex-1 py-3 rounded-xl font-bold text-xs bg-[#eef0e8] text-[#5a7d96]">Cancel</button>
-                <button @click="confirmModal.onConfirm()"
-                    class="flex-1 py-3 rounded-xl font-bold text-xs bg-rose-500 text-white shadow-lg shadow-rose-500/30">Confirm</button>
-            </div>
+    <!-- Font Size -->
+    <div style="padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div class="list-icon" style="width:32px;height:32px;font-size:14px;font-weight:700">Tt</div>
+        <div>
+          <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Font Size</p>
+          <p style="font-size:11px;color:var(--outline);margin-top:1px">Scale text for better legibility</p>
         </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding-left:44px">
+        <span style="font-size:11px;font-weight:600;color:var(--outline)">A</span>
+        <input type="range" min="11" max="20" step="1" :value="fontSize" @input="setFontSize($event.target.value)" class="range-slider" style="flex:1">
+        <span style="font-size:16px;font-weight:700;color:var(--outline)">A</span>
+      </div>
+      <p style="font-size:11px;color:var(--outline);text-align:center;margin-top:6px;padding-left:44px" x-text="fontSize + 'px — ' + (fontSize<=12?'Compact':(fontSize<=14?'Default':(fontSize<=16?'Medium':'Large')))"></p>
     </div>
 
+  </div>
 
-    <!-- Floating Buttons -->
-    <div
-        class="fixed bottom-[calc(env(safe-area-inset-bottom)+80px)] md:bottom-8 right-4 md:right-8 z-50 flex flex-col gap-4">
-        <button @click="showQuickAdd = true"
-            class="w-16 h-16 bg-[#355872] text-white rounded-full shadow-lg flex items-center justify-center text-3xl btn-action pb-1 touch-target z-10">
-            +
-        </button>
-        <button @click="sendToWhatsApp()"
-            class="w-12 h-12 bg-[#7AAACE] text-white rounded-full shadow-lg flex items-center justify-center text-xl btn-action touch-target">📝</button>
-        <button @click="showCalc = !showCalc"
-            class="w-12 h-12 bg-[#355872] text-white rounded-full shadow-lg flex items-center justify-center text-xl btn-action touch-target">
-            <span x-show="!showCalc">🧮</span><span x-show="showCalc">✕</span>
-        </button>
+  <!-- SECURITY & PRIVACY -->
+  <p class="section-label" style="margin-bottom:12px">Security & Privacy</p>
+  <div class="card mb-12" style="padding:0">
+
+    <!-- Backup & Restore -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="triggerImport()">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">🔄</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Backup & Restore</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
 
-    <!-- Quick Add Modal -->
-    <div x-show="showQuickAdd" x-cloak
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90] flex items-end md:items-center justify-center p-0 md:p-4">
-        <div @click.away="showQuickAdd = false" x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-y-full md:translate-y-10"
-            x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 translate-y-0"
-            x-transition:leave-end="opacity-0 translate-y-full md:translate-y-10"
-            class="bg-white w-full md:max-w-sm rounded-t-[30px] md:rounded-[20px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] md:shadow-2xl p-6 pb-12 md:pb-6 border-t border-[#eef0e8] md:border">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="font-bold text-lg text-[#355872]">Quick Expense</h3>
-                <button @click="showQuickAdd = false" class="text-[#8a9ea8] hover:text-rose-500">✕</button>
-            </div>
-            <div class="space-y-4">
-                <input type="text" :value="displayAmount" @input="handleFormat($el)" placeholder="Rp 0"
-                    class="input-field text-2xl font-black text-center">
-                <div class="grid grid-cols-2 gap-2">
-                    <template x-for="cat in Object.keys(budgets)" :key="cat">
-                        <button @click="newCategory = cat"
-                            :class="newCategory === cat ? 'bg-[#355872] text-white shadow-md' : 'bg-[#eef0e8] text-[#5a7d96]'"
-                            class="p-3 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1">
-                            <span class="text-xl" x-text="getCategoryIcon(cat)"></span>
-                            <span x-text="cat"></span>
-                        </button>
-                    </template>
-                </div>
-                <button @click="transactionType='expense'; addTransaction()"
-                    class="w-full bg-[#355872] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs mt-2 shadow-lg">Quick
-                    Save</button>
-            </div>
-        </div>
+    <!-- Export Data -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="exportData()">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">📤</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Export Data (JSON)</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     </div>
 
-    <!-- Calculator Modal -->
-    <div x-show="showCalc" x-cloak
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[90] flex items-end md:items-center justify-center p-0 md:p-4">
-        <div @click.away="showCalc = false" x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-y-full md:translate-y-10"
-            x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 translate-y-0"
-            x-transition:leave-end="opacity-0 translate-y-full md:translate-y-10"
-            class="bg-white w-full md:max-w-xs rounded-t-[30px] md:rounded-[20px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] md:shadow-2xl p-6 pb-12 md:pb-6 border-t border-[#eef0e8] md:border">
-            <div class="bg-[#355872] p-5 rounded-2xl mb-4 text-right">
-                <p class="text-[10px] font-bold text-[#7AAACE] uppercase" x-text="calcExpression || 'READY'"></p>
-                <p class="text-3xl font-bold text-white" x-text="calcDisplay"></p>
-            </div>
-            <div class="grid grid-cols-4 gap-2">
-                <button @click="calcClear()"
-                    class="h-12 rounded-xl font-bold bg-rose-50 text-rose-600 col-span-2">RESET</button>
-                <button @click="calcOp('/')" class="h-12 rounded-xl font-bold bg-[#eef0e8] text-[#355872]">/</button>
-                <button @click="calcOp('*')" class="h-12 rounded-xl font-bold bg-[#eef0e8] text-[#355872]">×</button>
-                <template x-for="n in ['7','8','9','4','5','6','1','2','3','0','.']">
-                    <button @click="calcNum(n)"
-                        class="h-12 rounded-xl font-bold bg-[#F7F8F0] text-[#355872] hover:bg-[#7AAACE]/10"
-                        x-text="n"></button>
-                </template>
-                <button @click="calcOp('-')" class="h-12 rounded-xl font-bold bg-[#eef0e8] text-[#355872]">-</button>
-                <button @click="calcOp('+')" class="h-12 rounded-xl font-bold bg-[#eef0e8] text-[#355872]">+</button>
-                <button @click="calcSolve()"
-                    class="h-12 rounded-xl font-bold bg-[#7AAACE] text-white shadow-lg">=</button>
-            </div>
-            <button @click="useCalcResult(); showCalc=false"
-                class="w-full mt-4 bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs uppercase">Use
-                Result</button>
-        </div>
+    <!-- Clear All Data -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" @click="clearHistory()">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px;background:var(--error-container);border-color:transparent">🗑️</div>
+      <p style="font-size:13px;font-weight:600;color:var(--error)">Clear All Data</p>
     </div>
 
-    <!-- Modern Pill Bottom Navigation -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-lg z-[100] md:hidden">
-        <nav class="bg-white/95 backdrop-blur-xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[32px] px-2 py-2 flex items-center justify-between">
-            
-            <!-- Dashboard (Home) -->
-            <button @click="activeTab = 'dashboard'" 
-                :class="activeTab === 'dashboard' ? 'bg-rose-100 text-rose-500 pr-4' : 'text-[#8a9ea8]'"
-                class="flex items-center gap-2 h-12 px-3 rounded-full transition-all duration-300 ease-out">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span x-show="activeTab === 'dashboard'" x-transition.opacity class="text-xs font-black uppercase tracking-widest">Home</span>
-            </button>
+  </div>
 
-            <!-- Transactions -->
-            <button @click="activeTab = 'transactions'" 
-                :class="activeTab === 'transactions' ? 'bg-indigo-100 text-indigo-600 pr-4' : 'text-[#8a9ea8]'"
-                class="flex items-center gap-2 h-12 px-3 rounded-full transition-all duration-300 ease-out">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                <span x-show="activeTab === 'transactions'" x-transition.opacity class="text-xs font-black uppercase tracking-widest">History</span>
-            </button>
+  <!-- GENERAL SETTINGS -->
+  <p class="section-label" style="margin-bottom:12px">General Settings</p>
+  <div class="card mb-12" style="padding:0">
 
-            <!-- Analytics -->
-            <button @click="activeTab = 'analytics'" 
-                :class="activeTab === 'analytics' ? 'bg-emerald-100 text-emerald-600 pr-4' : 'text-[#8a9ea8]'"
-                class="flex items-center gap-2 h-12 px-3 rounded-full transition-all duration-300 ease-out">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
-                </svg>
-                <span x-show="activeTab === 'analytics'" x-transition.opacity class="text-xs font-black uppercase tracking-widest">Charts</span>
-            </button>
-
-            <!-- Profile -->
-            <button @click="activeTab = 'profile'" 
-                :class="activeTab === 'profile' ? 'bg-fuchsia-100 text-fuchsia-600 pr-4' : 'text-[#8a9ea8]'"
-                class="flex items-center gap-2 h-12 px-3 rounded-full transition-all duration-300 ease-out">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span x-show="activeTab === 'profile'" x-transition.opacity class="text-xs font-black uppercase tracking-widest">User</span>
-            </button>
-
-            <!-- Settings -->
-            <button @click="activeTab = 'settings'" 
-                :class="activeTab === 'settings' ? 'bg-amber-100 text-amber-600 pr-4' : 'text-[#8a9ea8]'"
-                class="flex items-center gap-2 h-12 px-3 rounded-full transition-all duration-300 ease-out">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span x-show="activeTab === 'settings'" x-transition.opacity class="text-xs font-black uppercase tracking-widest">Config</span>
-            </button>
-        </nav>
+    <!-- Categories -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="showAddCategory=true">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">🏷️</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Manage Categories</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
 
-    <!-- Main Container -->
-    <div class="max-w-7xl mx-auto px-4 py-4 md:py-12 mb-[calc(env(safe-area-inset-bottom)+80px)] md:mb-0">
-
-        <!-- Header -->
-        <header
-            class="relative z-40 bg-transparent safe-pt px-0 pb-6 pt-4 md:pt-0 md:relative flex flex-col md:flex-row justify-between items-center mb-6 gap-4 md:gap-6 md:border-none">
-            <div class="flex flex-col sm:flex-row items-center gap-6">
-                <div class="text-center sm:text-left">
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-[#355872] tracking-tight">WealthyFlow <span
-                            class="text-[#7AAACE]">PRO</span></h1>
-                    <p class="text-[11px] md:text-sm text-[#5a7d96] font-medium opacity-80">Smart Financial Dashboard</p>
-                </div>
-            </div>
-            <div class="flex flex-row gap-3 w-full md:w-auto overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar">
-                <div class="glass-card animate-fade-in-up p-4 rounded-[20px] flex-1 min-w-[160px] snap-center">
-                    <p class="text-[9px] font-bold text-[#8a9ea8] uppercase mb-1">Total Balance</p>
-                    <div class="h-7 flex items-center">
-                        <template x-if="isLoading">
-                            <div class="w-3/4 h-full bg-[#eef0e8] rounded animate-pulse"></div>
-                        </template>
-                        <template x-if="!isLoading">
-                            <p class="text-lg font-extrabold text-[#355872] whitespace-nowrap"
-                                x-text="formatRupiah(totalSaldo)"></p>
-                        </template>
-                    </div>
-                </div>
-                <div class="bg-[#355872] p-4 rounded-[20px] shadow-lg text-white flex-1 min-w-[160px] snap-center">
-                    <p class="text-[9px] font-bold text-[#7AAACE]/80 uppercase mb-1">Monthly Income</p>
-                    <div class="h-7 flex items-center">
-                        <template x-if="isLoading">
-                            <div class="w-3/4 h-full bg-white/20 rounded animate-pulse"></div>
-                        </template>
-                        <template x-if="!isLoading">
-                            <p class="text-lg font-extrabold whitespace-nowrap"
-                                x-text="formatRupiah(monthlyIncome)"></p>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- Dashboard Section -->
-        <div x-show="activeTab === 'dashboard'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-            <!-- Feature 1: Safe-to-Spend Card -->
-            <div class="mb-8">
-                <div class="glass-card animate-fade-in-up rounded-[20px] p-8 border-t-4 transition-all duration-500 overflow-hidden relative"
-                    :class="safeToSpend.status === 'risk' ? 'border-t-rose-500' : (safeToSpend.status === 'caution' ? 'border-t-amber-500' : 'border-t-emerald-500')">
-                    <div class="absolute -right-10 -top-10 w-40 h-40 opacity-10 bg-[#7AAACE] rounded-full blur-3xl"></div>
-                    <div class="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
-                        <div class="text-center md:text-left">
-                            <p class="text-xs font-black text-[#8a9ea8] uppercase tracking-widest mb-1">Safe to Spend Today</p>
-                            <h2 class="text-4xl md:text-5xl font-black text-[#355872]" x-text="formatRupiah(safeToSpend.amount)"></h2>
-                            <div class="flex items-center gap-2 mt-2 justify-center md:justify-start">
-                                <span class="w-2 h-2 rounded-full animate-pulse" :class="safeToSpend.status === 'risk' ? 'bg-rose-500' : (safeToSpend.status === 'caution' ? 'bg-amber-500' : 'bg-emerald-500')"></span>
-                                <span class="text-xs font-bold uppercase tracking-widest" :class="safeToSpend.status === 'risk' ? 'text-rose-500' : (safeToSpend.status === 'caution' ? 'text-amber-500' : 'text-emerald-500')"
-                                    x-text="safeToSpend.status === 'risk' ? 'High Risk' : (safeToSpend.status === 'caution' ? 'Be Careful' : 'Safe to go')"></span>
-                            </div>
-                        </div>
-                        <div class="flex-1 max-w-md w-full grid grid-cols-2 gap-4">
-                            <div class="bg-[#eef0e8] p-4 rounded-2xl border border-[#355872]/10">
-                                <p class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-1">Remaining Days</p>
-                                <p class="text-xl font-black text-[#355872]" x-text="safeToSpend.daysLeft"></p>
-                            </div>
-                            <div class="bg-[#eef0e8] p-4 rounded-2xl border border-[#355872]/10">
-                                <p class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-1">End of Month Goal</p>
-                                <p class="text-xl font-black text-emerald-500" x-text="formatRupiah(getTypeSpending('Savings'))"></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Widgets: Health Score & Projection -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <!-- Financial Health Score -->
-                <div class="glass-card animate-fade-in-up rounded-[20px] p-6 sm:p-8 flex items-center gap-6 border-l-8"
-                    :class="healthScore.score <= 40 ? 'border-l-rose-500' : (healthScore.score <= 70 ? 'border-l-amber-500' : 'border-l-emerald-500')">
-                    <div class="shrink-0 relative w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8" class="text-[#eef0e8]"></circle>
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8" stroke-dasharray="283"
-                                :stroke-dashoffset="isLoading ? 283 : (283 - (283 * healthScore.score / 100))"
-                                class="transition-all duration-1000 ease-out"
-                                :class="healthScore.score <= 40 ? 'text-rose-500' : (healthScore.score <= 70 ? 'text-amber-500' : 'text-emerald-500')"></circle>
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <template x-if="isLoading"><div class="w-10 h-6 bg-[#eef0e8] rounded animate-pulse"></div></template>
-                            <template x-if="!isLoading">
-                                <div class="flex flex-col items-center">
-                                    <span class="text-3xl font-black text-[#355872]" x-text="healthScore.score"></span>
-                                    <span class="text-[10px] font-bold text-[#8a9ea8] uppercase">Score</span>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <h2 class="text-lg sm:text-xl font-bold mb-2 text-[#355872] flex flex-wrap items-center gap-2">
-                            Financial Health
-                            <span x-show="!isLoading" class="px-3 py-1 rounded-full text-xs font-black text-white"
-                                :class="healthScore.score <= 40 ? 'bg-rose-500' : (healthScore.score <= 70 ? 'bg-amber-500' : 'bg-emerald-500')"
-                                x-text="healthScore.status"></span>
-                        </h2>
-                        <p class="text-xs sm:text-sm font-medium text-[#5a7d96] mb-4" x-text="healthScore.explanation"></p>
-                    </div>
-                </div>
-
-                <!-- Cashflow Projection -->
-                <div class="glass-card animate-fade-in-up rounded-[20px] p-6 sm:p-8 flex flex-col justify-center">
-                    <div class="flex justify-between items-start mb-6">
-                        <h2 class="text-xl font-bold text-[#355872]">Cashflow Projection</h2>
-                        <div class="bg-[#7AAACE]/10 text-[#7AAACE] p-2 rounded-xl shadow-sm text-xl">📈</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-[#eef0e8] p-4 rounded-2xl border border-[#355872]/10 relative overflow-hidden group">
-                            <p class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-1">In 7 Days</p>
-                            <p class="text-xl font-black text-[#355872]" x-text="formatRupiah(projection.days7)"></p>
-                        </div>
-                        <div class="bg-[#eef0e8] p-4 rounded-2xl border border-[#355872]/10 relative overflow-hidden group">
-                            <p class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-1">In 30 Days</p>
-                            <p class="text-xl font-black" :class="projection.days30 < 0 ? 'text-rose-500' : 'text-[#355872]'" x-text="formatRupiah(projection.days30)"></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- The 3 Ratio Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                <template x-for="type in ['Needs', 'Wants', 'Savings']" :key="type">
-                    <div class="group bg-white p-5 rounded-2xl shadow-sm border border-[#355872]/8 relative overflow-hidden transition hover:shadow-md">
-                        <div class="absolute top-0 right-0 w-1.5 h-full" :class="type === 'Needs' ? 'bg-[#7AAACE]' : (type === 'Wants' ? 'bg-amber-400' : 'bg-emerald-400')"></div>
-                        <div class="flex justify-between items-start mb-3 pr-2">
-                            <div class="min-w-0">
-                                <p class="font-bold text-[#355872] text-base truncate" x-text="type"></p>
-                                <p class="text-[9px] font-bold text-[#8a9ea8] uppercase tracking-wider" x-text="'Ratio: ' + ratios[type] + '%'"></p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm font-black transition-colors" :class="getTypePercent(type) >= 100 ? 'text-rose-500' : 'text-[#355872]'" x-text="formatRupiah(getTypeSpending(type))"></p>
-                            </div>
-                        </div>
-                        <div class="w-full bg-[#eef0e8] h-3 rounded-full overflow-hidden pr-2">
-                            <div class="h-full transition-all duration-1000 ease-out" :class="type === 'Needs' ? 'bg-[#7AAACE]' : (type === 'Wants' ? 'bg-amber-400' : 'bg-emerald-400')" :style="'width:' + getTypePercent(type) + '%'"></div>
-                        </div>
-                        <div class="flex justify-between mt-2 text-[10px] font-bold text-[#8a9ea8] pr-2">
-                            <span x-text="getTypePercent(type) + '% Used'"></span>
-                            <span x-text="'Limit: ' + formatRupiah(getAutoBudgetLimit(type))"></span>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-
-        <!-- Transactions Section -->
-        <div x-show="activeTab === 'transactions'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                <!-- LEFT: Input Form -->
-                <div class="xl:col-span-4 space-y-8">
-                    <section class="glass-card p-6 rounded-[20px]">
-                        <div class="flex bg-[#eef0e8] p-1 rounded-2xl mb-6">
-                            <button @click="transactionType = 'income'" :class="transactionType === 'income' ? 'bg-white shadow-md text-[#7AAACE]' : 'text-[#8a9ea8]'" class="flex-1 py-3 rounded-xl font-bold transition text-xs uppercase">Income</button>
-                            <button @click="transactionType = 'expense'" :class="transactionType === 'expense' ? 'bg-[#355872] shadow-md text-white' : 'text-[#8a9ea8]'" class="flex-1 py-3 rounded-xl font-bold transition text-xs uppercase">Expense</button>
-                        </div>
-                        <div class="space-y-4">
-                            <template x-if="editingId">
-                                <div class="bg-[#7AAACE]/10 text-[#7AAACE] text-xs font-bold p-3 rounded-xl flex justify-between items-center">
-                                    <span>Editing Transaction...</span>
-                                    <button @click="editingId = null; newAmount = 0; displayAmount = ''" class="hover:text-[#355872]">Cancel</button>
-                                </div>
-                            </template>
-                            <div>
-                                <label class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-2 block">Amount</label>
-                                <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)" class="input-field text-lg font-bold" placeholder="Rp 0">
-                            </div>
-                            <template x-if="transactionType === 'expense'">
-                                <div>
-                                    <label class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-2 block">Category</label>
-                                    <select x-model="newCategory" class="input-field text-sm font-bold appearance-none cursor-pointer">
-                                        <option value="" disabled>Select Category</option>
-                                        <template x-for="cat in Object.keys(budgets)" :key="cat">
-                                            <option :value="cat" x-text="getCategoryIcon(cat) + ' ' + cat"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                            </template>
-                            <template x-if="transactionType === 'income'">
-                                <div>
-                                    <label class="text-[10px] font-bold text-[#8a9ea8] uppercase mb-2 block">Income Source</label>
-                                    <input type="text" x-model="incomeSource" placeholder="e.g.: Salary, Freelance" class="input-field text-sm font-bold">
-                                </div>
-                            </template>
-                            <button @click="addTransaction()" class="w-full bg-[#355872] text-white py-4 rounded-2xl font-bold shadow-lg text-xs uppercase tracking-widest hover:brightness-110 transition relative overflow-hidden group">
-                                <span class="relative z-10" x-text="editingId ? 'Update Transaction' : 'Save Transaction'"></span>
-                            </button>
-                        </div>
-                    </section>
-
-                    <!-- Recurring Bills -->
-                    <section class="glass-card p-6 rounded-[20px]">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-sm font-black text-[#355872] uppercase tracking-widest">Recurring Bills</h2>
-                            <button @click="showRecurring = !showRecurring" class="text-xs bg-[#eef0e8] text-[#355872] font-bold px-3 py-1 rounded-lg">Add</button>
-                        </div>
-                        <div x-show="showRecurring" class="mb-6 space-y-3 p-4 bg-[#eef0e8] rounded-xl">
-                            <input type="text" x-model="newRecName" placeholder="Bill Name" class="input-field text-xs">
-                            <input type="text" inputmode="numeric" x-model="newRecDisplay" @input="handleRecFormat($el)" placeholder="Amount (Rp)" class="input-field text-xs">
-                            <input type="date" x-model="newRecDate" class="input-field text-xs">
-                            <button @click="addRecurring()" class="w-full bg-[#7AAACE] text-white text-xs font-bold py-2 rounded-lg">Add Recurring</button>
-                        </div>
-                        <div class="space-y-3 max-h-80 overflow-y-auto custom-scroll pr-2">
-                            <template x-for="r in sortedRecurring" :key="r.id">
-                                <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#355872]/8 group transition hover:border-[#7AAACE]">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-[#eef0e8] flex items-center justify-center text-sm" x-text="getCategoryIcon(r.name)"></div>
-                                        <div>
-                                            <p class="text-xs font-bold text-[#355872]" x-text="r.name"></p>
-                                            <p class="text-[10px] mt-0.5" :class="getDueDateStatus(r.nextDate)" x-text="getDueText(r.nextDate)"></p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-xs font-black" :class="r.type === 'income' ? 'text-emerald-500' : 'text-rose-500'" x-text="formatRupiah(r.amount)"></p>
-                                        <button @click="deleteRecurring(r.id)" class="text-rose-500 text-[10px] font-bold uppercase mt-1">Delete</button>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- RIGHT: Transaction History -->
-                <div class="xl:col-span-8">
-                    <section class="glass-card rounded-[20px] overflow-hidden flex flex-col h-[700px]">
-                        <div class="p-6 bg-[#eef0e8] border-b border-[#355872]/10 flex justify-between items-center">
-                            <h2 class="text-xs font-black text-[#355872] uppercase tracking-widest">Transaction History</h2>
-                            <button @click="clearHistory()" class="text-[10px] font-bold text-rose-500 uppercase">Clear All</button>
-                        </div>
-                        <div class="flex-1 overflow-y-auto custom-scroll p-4">
-                            <template x-for="t in filteredTransactions" :key="t.id">
-                                <div class="relative mb-3 bg-white border border-[#355872]/8 rounded-2xl p-4 flex justify-between items-center hover:shadow-md transition cursor-pointer" @click="editTransaction(t)">
-                                    <div class="flex items-center gap-4">
-                                        <div :class="t.type === 'income' ? 'bg-[#7AAACE]/10 text-[#7AAACE]' : 'bg-[#355872]/10 text-[#355872]'" class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl">
-                                            <span x-text="t.type === 'income' ? '↙' : getCategoryIcon(t.category)"></span>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-[#355872] text-sm" x-text="t.category"></p>
-                                            <p class="text-[10px] font-medium text-[#8a9ea8]" x-text="formatDate(t.date)"></p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="font-extrabold text-sm" :class="t.type === 'income' ? 'text-emerald-500' : 'text-[#355872]'" x-text="(t.type === 'income' ? '+' : '-') + formatRupiah(t.amount)"></p>
-                                        <button @click.stop="deleteTransaction(t.id)" class="text-rose-500 text-[10px] font-bold uppercase mt-1">Delete</button>
-                                    </div>
-                                </div>
-                            </template>
-                            <div x-show="transactions.length === 0" class="py-16 text-center text-[#8a9ea8]">No transactions yet.</div>
-                        </div>
-                    </section>
-                </div>
-            </div>
-        </div>
-
-        <!-- Analytics Section -->
-        <div x-show="activeTab === 'analytics'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-            <section class="glass-card p-6 sm:p-8 rounded-[20px]">
-                <h2 class="text-xl font-bold text-[#355872] mb-6">Data Visualization</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#355872]/8 h-64"><canvas id="pieChart"></canvas></div>
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#355872]/8 h-64"><canvas id="barChart"></canvas></div>
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#355872]/8 md:col-span-2 h-80"><canvas id="lineChart"></canvas></div>
-                </div>
-            </section>
-        </div>
-
-        <!-- Profile Section -->
-        <div x-show="activeTab === 'profile'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-            <section class="glass-card p-8 rounded-[20px] text-center max-w-2xl mx-auto">
-                <div class="w-24 h-24 bg-[#355872] text-white rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl border-4 border-white">👤</div>
-                <h2 class="text-2xl font-black text-[#355872]">User Profile</h2>
-                <p class="text-sm text-[#5a7d96] mb-8">Personalize your WealthyFlow experience</p>
-                <div class="grid grid-cols-2 gap-4 text-left">
-                    <div class="bg-[#eef0e8] p-4 rounded-2xl">
-                        <p class="text-[10px] font-bold text-[#8a9ea8] uppercase">Total Transactions</p>
-                        <p class="text-xl font-black text-[#355872]" x-text="transactions.length"></p>
-                    </div>
-                    <div class="bg-[#eef0e8] p-4 rounded-2xl">
-                        <p class="text-[10px] font-bold text-[#8a9ea8] uppercase">Active Bills</p>
-                        <p class="text-xl font-black text-[#355872]" x-text="recurringTransactions.length"></p>
-                    </div>
-                </div>
-                <div class="mt-8 space-y-3">
-                    <button @click="exportData()" class="w-full bg-[#355872] text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-lg">Export Backup (JSON)</button>
-                    <input type="file" id="importFile" @change="importData" class="hidden" accept=".json">
-                    <button @click="triggerImport()" class="w-full bg-white text-[#355872] border border-[#355872]/20 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs">Import Backup</button>
-                </div>
-         <!-- Settings Section -->
-        <div x-show="activeTab === 'settings'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
-            <section class="space-y-8">
-                <div class="glass-card p-6 rounded-[20px]">
-                    <h2 class="text-xl font-bold text-[#355872] mb-6">Ratio Settings</h2>
-                    <div class="bg-[#355872] p-6 rounded-2xl text-white mb-8">
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-                            <div><label class="text-[10px] font-bold uppercase mb-2 block">Needs (%)</label><input type="number" x-model.number="tempRatios.Needs" class="input-field bg-[#2a475e] text-white border-[#7AAACE]/30"></div>
-                            <div><label class="text-[10px] font-bold uppercase mb-2 block">Wants (%)</label><input type="number" x-model.number="tempRatios.Wants" class="input-field bg-[#2a475e] text-white border-[#7AAACE]/30"></div>
-                            <div><label class="text-[10px] font-bold uppercase mb-2 block">Savings (%)</label><input type="number" x-model.number="tempRatios.Savings" class="input-field bg-[#2a475e] text-white border-[#7AAACE]/30"></div>
-                            <button @click="saveRatios()" class="bg-[#7AAACE] text-white font-bold rounded-xl py-3 text-xs uppercase">Save Ratios</button>
-                        </div>
-                        <p x-show="ratioError" class="text-rose-400 text-xs font-bold mt-3" x-text="ratioError"></p>
-                    </div>
-
-                    <h2 class="text-xl font-bold text-[#355872] mb-6">Manage Categories</h2>
-                    <div class="bg-[#eef0e8] p-6 rounded-2xl">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                            <input type="text" x-model="newCatName" placeholder="Category Name" class="input-field">
-                            <select x-model="newCatType" class="input-field">
-                                <option value="Needs">Needs</option>
-                                <option value="Wants">Wants</option>
-                                <option value="Savings">Savings</option>
-                            </select>
-                            <button @click="addCategory()" class="bg-[#7AAACE] text-white font-bold rounded-xl py-2 text-xs uppercase">Add</button>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <template x-for="(data, cat) in budgets" :key="cat">
-                                <div class="bg-white border border-[#355872]/10 px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-[#5a7d96]">
-                                    <span x-text="getCategoryIcon(cat) + ' ' + cat"></span>
-                                    <button @click="deleteCategory(cat)" class="text-rose-500">✕</button>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
+    <!-- Budget Ratios -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer" @click="showRatioSettings=true">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">📊</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Budget Ratio</p>
+        <p style="font-size:11px;color:var(--outline);margin-top:1px" x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings+' rule'"></p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
+
+    <!-- About -->
+    <div style="padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="list-icon" style="width:32px;height:32px;font-size:14px">ℹ️</div>
+        <div>
+          <p style="font-size:13px;font-weight:600;color:var(--on-surface)">About WealthyFlow</p>
+          <p style="font-size:11px;color:var(--outline);margin-top:1px">Version 2.4.1-stable</p>
+          <p style="font-size:11px;color:var(--outline)">© 2024 WealthyFlow Engineering</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help & FAQ -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">❓</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Help & FAQ</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    </div>
+
+    <!-- Feedback -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer">
+      <div class="list-icon" style="width:32px;height:32px;font-size:14px">💬</div>
+      <div class="flex-1">
+        <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Feedback / Report Bug</p>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)" stroke-width="1.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </div>
+
+  </div>
+
+</div><!-- /profile tab -->
+
+<!-- ═══════════ BOTTOM NAV ═══════════ -->
+<nav class="bottom-nav">
+  <button class="nav-item" :class="activeTab==='dashboard'?'active':''" @click="activeTab='dashboard'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+    </svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-item" :class="activeTab==='cashflow'?'active':''" @click="activeTab='cashflow'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>
+    </svg>
+    <span>Cashflow</span>
+  </button>
+  <button class="nav-item" :class="activeTab==='savings'?'active':''" @click="activeTab='savings'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/>
+    </svg>
+    <span>Savings</span>
+  </button>
+  <button class="nav-item" :class="activeTab==='profile'?'active':''" @click="activeTab='profile'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+</div><!-- /app -->
 </body>
 </html>
