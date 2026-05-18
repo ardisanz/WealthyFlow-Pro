@@ -1,10 +1,12 @@
-const CACHE_NAME = 'wealthyflow-v2';
+const CACHE_NAME = 'wealthyflow-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './style.css',
   './script.js',
-  './manifest.json'
+  './manifest.json',
+  './js/alpine.min.js',
+  './js/chart.min.js'
 ];
 
 self.addEventListener('install', (event) => {

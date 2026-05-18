@@ -5,11 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>WealthyFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="js/alpine.min.js"></script>
+    <script src="js/chart.min.js"></script>
     <script src="script.js"></script>
 </head>
 
@@ -98,7 +101,7 @@
                     <select x-model="newCategory" class="input-field">
                         <option value="" disabled>Select category</option>
                         <template x-for="cat in Object.keys(budgets)" :key="cat">
-                            <option :value="cat" x-text="getCategoryIcon(cat)+' '+cat"></option>
+                            <option :value="cat" x-text="cat"></option>
                         </template>
                     </select>
                 </div>
@@ -160,8 +163,8 @@
                     <template x-for="(data,cat) in budgets" :key="cat">
                         <div
                             style="display:flex;align-items:center;gap:4px;background:var(--surface-1);border:1px solid var(--outline-2);border-radius:var(--r-sm);padding:3px 8px">
-                            <span style="font-size:12px;font-weight:500;color:var(--on-surface-2)"
-                                x-text="getCategoryIcon(cat)+' '+cat"></span>
+                            <span style="display:flex;align-items:center;color:var(--on-surface-2)" x-html="getCategoryIcon(cat)"></span>
+                            <span style="font-size:12px;font-weight:500;color:var(--on-surface-2)" x-text="cat"></span>
                             <button @click="deleteCategory(cat)"
                                 style="background:none;border:none;cursor:pointer;color:var(--error);font-size:14px;line-height:1;padding:0 2px">&times;</button>
                         </div>
@@ -199,6 +202,25 @@
                 </div>
                 <button class="btn btn-primary btn-full" style="height:44px"
                     @click="addRecurring();showRecurring=false">Add Recurring</button>
+            </div>
+        </div>
+
+        <!-- LANGUAGE SHEET -->
+        <div class="overlay" x-show="showLanguage" x-cloak @click.self="showLanguage=false" style="display:none">
+            <div class="sheet" style="max-width:430px">
+                <div class="sheet-handle"></div>
+                <p class="sheet-title">Select Language</p>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+                    <button class="btn" :class="language==='id'?'btn-primary':'btn-secondary'" style="justify-content:flex-start;padding:12px 16px;height:auto" @click="setLanguage('id');showLanguage=false">
+                        <span style="font-size:18px;margin-right:12px">🇮🇩</span> <span style="flex:1;text-align:left">Bahasa Indonesia</span>
+                    </button>
+                    <button class="btn" :class="language==='sg'?'btn-primary':'btn-secondary'" style="justify-content:flex-start;padding:12px 16px;height:auto" @click="setLanguage('sg');showLanguage=false">
+                        <span style="font-size:18px;margin-right:12px">🇸🇬</span> <span style="flex:1;text-align:left">English (Singapore)</span>
+                    </button>
+                    <button class="btn" :class="language==='my'?'btn-primary':'btn-secondary'" style="justify-content:flex-start;padding:12px 16px;height:auto" @click="setLanguage('my');showLanguage=false">
+                        <span style="font-size:18px;margin-right:12px">🇲🇾</span> <span style="flex:1;text-align:left">Bahasa Melayu</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -952,7 +974,7 @@
                                     tint</p>
                             </div>
                         </div>
-                        <div style="display:flex;gap:10px;padding-left:44px">
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;padding-left:44px">
                             <template x-for="c in accentColors" :key="c.value">
                                 <button @click="setAccentColor(c.value)"
                                     :style="`width:32px;height:32px;border-radius:9999px;background:${c.value};border:3px solid ${accentColor===c.value?'var(--on-surface)':'transparent'};cursor:pointer;transition:border-color .15s;flex-shrink:0;outline:none;position:relative`"
@@ -1061,6 +1083,28 @@
                 <!-- GENERAL SETTINGS -->
                 <p class="section-label" style="margin-bottom:12px">General Settings</p>
                 <div class="card mb-12" style="padding:0">
+
+                    <!-- Language -->
+                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
+                        @click="showLanguage=true">
+                        <div class="list-icon" style="width:32px;height:32px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Language</p>
+                            <p style="font-size:11px;color:var(--outline);margin-top:1px"
+                                x-text="language==='id'?'Bahasa Indonesia':(language==='sg'?'English (Singapore)':'Bahasa Melayu')"></p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
+                            stroke-width="1.5">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </div>
 
                     <!-- Categories -->
                     <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"

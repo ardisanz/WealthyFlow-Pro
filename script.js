@@ -286,6 +286,8 @@ function moneyApp() {
         darkMode: false,
         accentColor: '#000000',
         fontSize: 14,
+        showLanguage: false,
+        language: 'sg',
         accentColors: [
             { value: '#000000', label: 'Slate' },
             { value: '#1a56db', label: 'Blue' },
@@ -333,6 +335,7 @@ function moneyApp() {
             this.darkMode = JSON.parse(localStorage.getItem('pro_darkMode')) || false;
             this.accentColor = localStorage.getItem('pro_accentColor') || '#000000';
             this.fontSize = JSON.parse(localStorage.getItem('pro_fontSize')) || 14;
+            this.language = localStorage.getItem('pro_language') || 'sg';
             this.applyTheme();
             this.applyFontSize();
 
@@ -838,6 +841,13 @@ function moneyApp() {
         },
 
         // --- SETTINGS ---
+        setLanguage(lang) {
+            this.language = lang;
+            localStorage.setItem('pro_language', lang);
+            this.pushNote('Language preference saved!');
+            // In a real application, you would load translations here
+        },
+
         toggleDarkMode() {
             this.darkMode = !this.darkMode;
             localStorage.setItem('pro_darkMode', JSON.stringify(this.darkMode));
