@@ -78,17 +78,17 @@
             <div class="sheet" style="max-width:430px">
                 <div class="sheet-handle"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                    <p class="sheet-title" style="margin:0" x-text="editingId?'Edit Transaction':'New Entry'"></p>
+                    <p class="sheet-title" style="margin:0" x-text="editingId?t('edit_entry_title'):t('new_entry_title')"></p>
                     <button class="btn btn-ghost" @click="showQuickAdd=false;editingId=null">✕</button>
                 </div>
                 <div class="tab-toggle">
                     <button class="tab-toggle-btn" :class="transactionType==='income'?'active':''"
-                        @click="transactionType='income'">Income</button>
+                        @click="transactionType='income'" x-text="t('income')">Income</button>
                     <button class="tab-toggle-btn" :class="transactionType==='expense'?'active':''"
-                        @click="transactionType='expense'">Expense</button>
+                        @click="transactionType='expense'" x-text="t('expense')">Expense</button>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Amount</label>
+                    <label class="form-label" x-text="t('amount')">Amount</label>
                     <div style="display:flex;gap:8px">
                         <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)"
                             class="input-field large flex-1" placeholder="Rp 0">
@@ -97,20 +97,20 @@
                     </div>
                 </div>
                 <div class="form-group" x-show="transactionType==='expense'">
-                    <label class="form-label">Category</label>
+                    <label class="form-label" x-text="t('category')">Category</label>
                     <select x-model="newCategory" class="input-field">
-                        <option value="" disabled>Select category</option>
+                        <option value="" disabled x-text="t('select_category')">Select category</option>
                         <template x-for="cat in Object.keys(budgets)" :key="cat">
                             <option :value="cat" x-text="cat"></option>
                         </template>
                     </select>
                 </div>
                 <div class="form-group" x-show="transactionType==='income'">
-                    <label class="form-label">Source</label>
+                    <label class="form-label" x-text="t('source')">Source</label>
                     <input type="text" x-model="incomeSource" placeholder="Salary, Freelance…" class="input-field">
                 </div>
                 <button class="btn btn-primary btn-full" style="height:44px" @click="addTransaction()"
-                    x-text="editingId?'Update Transaction':'Save Transaction'"></button>
+                    x-text="editingId?t('update_tx'):t('save_tx')"></button>
             </div>
         </div>
 
@@ -209,7 +209,7 @@
         <div class="overlay" x-show="showLanguage" x-cloak @click.self="showLanguage=false" style="display:none">
             <div class="sheet" style="max-width:430px">
                 <div class="sheet-handle"></div>
-                <p class="sheet-title">Select Language</p>
+                <p class="sheet-title" x-text="t('select_language')">Select Language</p>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
                     <button class="btn" :class="language==='id'?'btn-primary':'btn-secondary'" style="justify-content:flex-start;padding:12px 16px;height:auto" @click="setLanguage('id');showLanguage=false">
                         <span style="font-size:18px;margin-right:12px">🇮🇩</span> <span style="flex:1;text-align:left">Bahasa Indonesia</span>
@@ -323,7 +323,8 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                         <div>
                             <p
-                                style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--outline);margin-bottom:2px">
+                                style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--outline);margin-bottom:2px"
+                                x-text="t('financial_health')">
                                 Financial Health</p>
                             <div style="display:flex;align-items:baseline;gap:4px">
                                 <h1 style="font-size:42px;font-weight:700;letter-spacing:-0.04em;color:var(--on-surface);line-height:1"
@@ -382,8 +383,8 @@
                 <!-- Weekly Overview Header -->
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
                     <div>
-                        <p class="section-label" style="margin-bottom:2px">Weekly Overview</p>
-                        <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)">
+                        <p class="section-label" style="margin-bottom:2px" x-text="t('weekly_overview')">Weekly Overview</p>
+                        <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)" x-text="t('cashflow_momentum')">
                             Cashflow Momentum</h1>
                     </div>
                     <span class="chip chip-neutral" style="margin-top:2px">Latest</span>
@@ -392,12 +393,12 @@
                 <!-- Income / Expense tiles -->
                 <div class="stat-grid mb-12">
                     <div class="stat-tile">
-                        <p class="stat-label">Total Income</p>
+                        <p class="stat-label" x-text="t('total_income')">Total Income</p>
                         <p class="stat-value text-success" style="font-size:15px" x-text="formatRupiah(totalIncome)">
                         </p>
                     </div>
                     <div class="stat-tile">
-                        <p class="stat-label">Total Expenses</p>
+                        <p class="stat-label" x-text="t('total_expenses')">Total Expenses</p>
                         <p class="stat-value text-error" style="font-size:15px" x-text="formatRupiah(totalExpense)"></p>
                     </div>
                 </div>
@@ -429,14 +430,14 @@
                             <line x1="12" y1="5" x2="12" y2="19" />
                             <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
-                        Add New Transaction
+                        <span x-text="t('new_entry')">Add New Transaction</span>
                     </button>
                 </div>
 
                 <!-- Recent History -->
                 <div class="card mb-12">
                     <div class="section-hd">
-                        <h2>Recent History</h2>
+                        <h2 x-text="t('recent_history')">Recent History</h2>
                         <div style="display:flex;align-items:center;gap:8px">
                             <template x-if="categoryFilter">
                                 <button class="chip chip-accent" @click="categoryFilter=null"
@@ -470,8 +471,8 @@
                             <template x-if="transactions.length===0">
                                 <div class="empty-state" style="padding:24px 0">
                                     <p class="empty-icon">🍃</p>
-                                    <p class="empty-title">No transactions yet</p>
-                                    <p class="empty-sub">Tap New Entry to get started</p>
+                                    <p class="empty-title" x-text="t('no_transactions')">No transactions yet</p>
+                                    <p class="empty-sub" x-text="t('tap_new_entry')">Tap New Entry to get started</p>
                                 </div>
                             </template>
                             <template x-for="t in filteredTransactions.slice(0,5)" :key="t.id">
@@ -510,7 +511,7 @@
                             </template>
                             <template x-if="transactions.length>5">
                                 <button class="btn btn-ghost btn-full" style="margin-top:8px;font-size:12px"
-                                    @click="activeTab='history'">View All Transactions →</button>
+                                    @click="activeTab='history'" x-text="t('view_all')">View All Transactions →</button>
                             </template>
                         </div>
                     </template>
@@ -519,7 +520,7 @@
                 <!-- Quick Allocation -->
                 <div class="card mb-12">
                     <div class="section-hd" style="margin-bottom:8px">
-                        <h2>Quick Allocation</h2>
+                        <h2 x-text="t('quick_allocation')">Quick Allocation</h2>
                         <button class="icon-btn" @click="showCalc=true" title="Calculator"
                             style="width:28px;height:28px;color:var(--on-surface)">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -538,12 +539,12 @@
                         </button>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Amount</label>
+                        <label class="form-label" x-text="t('amount')">Amount</label>
                         <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)"
                             class="input-field large" placeholder="Rp 0">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Category</label>
+                        <label class="form-label" x-text="t('category')">Category</label>
                         <select x-model="newCategory" class="input-field">
                             <option value="" disabled>Essentials</option>
                             <template x-for="cat in Object.keys(budgets)" :key="cat">
@@ -552,13 +553,13 @@
                         </select>
                     </div>
                     <button class="btn btn-primary btn-full" style="height:40px"
-                        @click="transactionType='expense';addTransaction()">Save</button>
+                        @click="transactionType='expense';addTransaction()" x-text="t('save')">Save</button>
                 </div>
 
                 <!-- Spending Trend Chart -->
                 <div class="card">
                     <div class="section-hd">
-                        <h2>Spending Trend</h2>
+                        <h2 x-text="t('spending_trend')">Spending Trend</h2>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
                             stroke-width="2">
                             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -574,7 +575,8 @@
                 <!-- Safe to Spend Hero -->
                 <div class="card card-dark mb-12">
                     <p
-                        style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:4px">
+                        style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:4px"
+                        x-text="t('safe_to_spend')">
                         Safe to Spend Today</p>
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
                         <p style="font-size:28px;font-weight:700;letter-spacing:-0.03em;color:var(--on-primary)"
@@ -586,14 +588,16 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                         <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
                             <p
-                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">
+                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px"
+                                x-text="t('remaining_days')">
                                 Remaining Days</p>
                             <p style="font-size:22px;font-weight:700;color:var(--on-primary)"
                                 x-text="safeToSpend.daysLeft"></p>
                         </div>
                         <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
                             <p
-                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">
+                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px"
+                                x-text="t('eom_goal')">
                                 End of Month Goal</p>
                             <p style="font-size:14px;font-weight:700;color:var(--on-primary)"
                                 x-text="formatRupiah(getTypeSpending('Savings'))"></p>
@@ -604,11 +608,11 @@
                 <!-- Monthly Income / Balance -->
                 <div class="stat-grid mb-12">
                     <div class="stat-tile dark">
-                        <p class="stat-label">Monthly Income</p>
+                        <p class="stat-label" x-text="t('monthly_income')">Monthly Income</p>
                         <p class="stat-value" x-text="formatRupiah(monthlyIncome)"></p>
                     </div>
                     <div class="stat-tile">
-                        <p class="stat-label">Total Balance</p>
+                        <p class="stat-label" x-text="t('total_balance')">Total Balance</p>
                         <p class="stat-value" x-text="formatRupiah(totalSaldo)"></p>
                     </div>
                 </div>
@@ -616,7 +620,7 @@
                 <!-- Cashflow Projection -->
                 <div class="card mb-12">
                     <div class="section-hd">
-                        <h2>Cashflow Projection</h2>
+                        <h2 x-text="t('cashflow_proj')">Cashflow Projection</h2>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
                             stroke-width="2">
                             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
@@ -652,7 +656,7 @@
                 <!-- Balance Over Time Chart -->
                 <div class="card mb-12">
                     <div class="section-hd">
-                        <h2>Balance Over Time</h2>
+                        <h2 x-text="t('balance_over_time')">Balance Over Time</h2>
                     </div>
                     <div class="chart-wrap" style="height:130px"><canvas id="lineChart"></canvas></div>
                 </div>
@@ -660,7 +664,7 @@
                 <!-- Pie Distribution -->
                 <div class="card">
                     <div class="section-hd">
-                        <h2>Expense Distribution</h2>
+                        <h2 x-text="t('expense_dist')">Expense Distribution</h2>
                     </div>
                     <div style="height:170px"><canvas id="pieChart"></canvas></div>
                 </div>
@@ -673,7 +677,7 @@
                 <!-- Auto-Saving System -->
                 <div class="card mb-12">
                     <div class="section-hd">
-                        <h2>Auto-Saving System</h2>
+                        <h2 x-text="t('auto_saving')">Auto-Saving System</h2>
                         <div style="display:flex;gap:6px">
                             <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
                                 @click="showRatioSettings=true">Ratio</button>
@@ -715,9 +719,9 @@
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-top:4px">
                                 <p style="font-size:10px;color:var(--outline);font-weight:500"
-                                    x-text="getTypePercent(type)+'% used'"></p>
+                                    x-text="getTypePercent(type)+'% '+t('used')"></p>
                                 <p style="font-size:10px;color:var(--outline);font-weight:500"
-                                    x-text="'Limit '+formatRupiah(getAutoBudgetLimit(type))"></p>
+                                    x-text="t('limit')+' '+formatRupiah(getAutoBudgetLimit(type))"></p>
                             </div>
                             <p style="font-size:12px;color:var(--on-surface-2);margin-top:4px"
                                 x-text="type==='Needs'?'Essential living expenses and bills.':(type==='Wants'?'Lifestyle, hobbies, and entertainment.':'Emergency fund and future investments.')">
@@ -729,7 +733,7 @@
                 <!-- Financial Health -->
                 <div class="card mb-12">
                     <div class="section-hd">
-                        <h2>Financial Health</h2>
+                        <h2 x-text="t('financial_health')">Financial Health</h2>
                         <span class="chip"
                             :class="healthScore.score<=40?'chip-error':(healthScore.score<=70?'chip-warning':'chip-success')"
                             x-text="healthScore.status"></span>
@@ -784,7 +788,7 @@
                 <!-- Recurring Bills -->
                 <div class="card">
                     <div class="section-hd">
-                        <h2>Recurring Bills</h2>
+                        <h2 x-text="t('recurring_bills')">Recurring Bills</h2>
                         <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
                             @click="showRecurring=true">+ Add</button>
                     </div>
@@ -819,7 +823,7 @@
             <div class="tab-content custom-scroll" x-show="activeTab==='history'" style="display:none">
 
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <h2 style="font-size:16px;font-weight:700;color:var(--on-surface)">Transaction History</h2>
+                    <h2 style="font-size:16px;font-weight:700;color:var(--on-surface)" x-text="t('history_title')">Transaction History</h2>
                     <div style="display:flex;align-items:center;gap:8px">
                         <template x-if="categoryFilter">
                             <button class="chip chip-accent" @click="categoryFilter=null" style="cursor:pointer">
@@ -827,7 +831,7 @@
                             </button>
                         </template>
                         <button class="btn btn-danger" style="padding:5px 10px;font-size:11px"
-                            @click="clearHistory()">Clear All</button>
+                            @click="clearHistory()" x-text="t('clear_all')">Clear All</button>
                     </div>
                 </div>
 
@@ -860,12 +864,12 @@
                                         <path d="M12 2v20" />
                                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                                     </svg></div>
-                                <p class="empty-title">No transactions found</p>
+                                <p class="empty-title" x-text="t('no_transactions')">No transactions found</p>
                                 <p class="empty-sub"
-                                    x-text="categoryFilter?'Clear filter to see all transactions':'Start by adding your first transaction'">
+                                    x-text="categoryFilter?t('clear_filter'):t('tap_new_entry')">
                                 </p>
                                 <button class="btn btn-primary" style="margin-top:12px;padding:8px 20px"
-                                    @click="showQuickAdd=true">+ New Entry</button>
+                                    @click="showQuickAdd=true" x-text="'+ ' + t('new_entry_title')">+ New Entry</button>
                             </div>
                         </template>
                         <template x-if="filteredTransactions.length>0">
@@ -927,13 +931,13 @@
                                 <path d="M19 12H5" />
                             </svg>
                         </button>
-                        <h1 style="font-size:16px;font-weight:700;color:var(--on-surface)">Settings</h1>
+                        <h1 style="font-size:16px;font-weight:700;color:var(--on-surface)" x-text="t('settings')">Settings</h1>
                     </div>
                     <span style="font-size:14px;font-weight:700;color:var(--on-surface)">WealthyFlow</span>
                 </div>
 
                 <!-- APPEARANCE -->
-                <p class="section-label" style="margin-bottom:12px">Appearance</p>
+                <p class="section-label" style="margin-bottom:12px" x-text="t('appearance')">Appearance</p>
                 <div class="card mb-12" style="padding:0">
 
                     <!-- Dark Mode -->
@@ -946,8 +950,8 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Dark Mode</p>
-                            <p style="font-size:11px;color:var(--outline);margin-top:1px">Adjust app visual theme</p>
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('dark_mode')">Dark Mode</p>
+                            <p style="font-size:11px;color:var(--outline);margin-top:1px" x-text="language==='id'?'Sesuaikan tema visual aplikasi':(language==='my'?'Selaraskan tema visual aplikasi':'Adjust app visual theme')">Adjust app visual theme</p>
                         </div>
                         <button @click="toggleDarkMode()" class="toggle-switch" :class="darkMode?'active':''">
                             <span class="toggle-knob"></span>
@@ -969,9 +973,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Accent Color</p>
-                                <p style="font-size:11px;color:var(--outline);margin-top:1px">Choose your primary brand
-                                    tint</p>
+                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('accent_color')">Accent Color</p>
+                                <p style="font-size:11px;color:var(--outline);margin-top:1px" x-text="language==='id'?'Pilih warna utama merek Anda':(language==='my'?'Pilih warna jenama utama anda':'Choose your primary brand tint')">Choose your primary brand tint</p>
                             </div>
                         </div>
                         <div style="display:flex;flex-wrap:wrap;gap:10px;padding-left:44px">
@@ -996,9 +999,8 @@
                             <div class="list-icon" style="width:32px;height:32px;font-size:14px;font-weight:700">Tt
                             </div>
                             <div>
-                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Font Size</p>
-                                <p style="font-size:11px;color:var(--outline);margin-top:1px">Scale text for better
-                                    legibility</p>
+                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('font_size')">Font Size</p>
+                                <p style="font-size:11px;color:var(--outline);margin-top:1px" x-text="language==='id'?'Ubah ukuran teks agar lebih mudah dibaca':(language==='my'?'Ubah saiz teks untuk pembacaan lebih mudah':'Scale text for better legibility')">Scale text for better legibility</p>
                             </div>
                         </div>
                         <div style="display:flex;align-items:center;gap:10px;padding-left:44px">
@@ -1015,7 +1017,7 @@
                 </div>
 
                 <!-- SECURITY & PRIVACY -->
-                <p class="section-label" style="margin-bottom:12px">Security & Privacy</p>
+                <p class="section-label" style="margin-bottom:12px" x-text="t('security_privacy')">Security & Privacy</p>
                 <div class="card mb-12" style="padding:0">
 
                     <!-- Backup & Restore -->
@@ -1031,7 +1033,7 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Backup & Restore</p>
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('backup_restore')">Backup & Restore</p>
                         </div>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
                             stroke-width="1.5">
@@ -1051,7 +1053,7 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Export Data (JSON)</p>
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('export_data')">Export Data (JSON)</p>
                         </div>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
                             stroke-width="1.5">
@@ -1075,13 +1077,13 @@
                                 <line x1="14" y1="11" x2="14" y2="17" />
                             </svg>
                         </div>
-                        <p style="font-size:13px;font-weight:600;color:var(--error)">Clear All Data</p>
+                        <p style="font-size:13px;font-weight:600;color:var(--error)" x-text="t('clear_data')">Clear All Data</p>
                     </div>
 
                 </div>
 
                 <!-- GENERAL SETTINGS -->
-                <p class="section-label" style="margin-bottom:12px">General Settings</p>
+                <p class="section-label" style="margin-bottom:12px" x-text="t('general_settings')">General Settings</p>
                 <div class="card mb-12" style="padding:0">
 
                     <!-- Language -->
@@ -1096,7 +1098,7 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Language</p>
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('language')">Language</p>
                             <p style="font-size:11px;color:var(--outline);margin-top:1px"
                                 x-text="language==='id'?'Bahasa Indonesia':(language==='sg'?'English (Singapore)':'Bahasa Melayu')"></p>
                         </div>
@@ -1118,7 +1120,7 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Manage Categories</p>
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('manage_categories')">Manage Categories</p>
                         </div>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--outline)"
                             stroke-width="1.5">
@@ -1139,7 +1141,7 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)">Budget Ratio</p>
+                            <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('budget_ratio')">Budget Ratio</p>
                             <p style="font-size:11px;color:var(--outline);margin-top:1px"
                                 x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings+' rule'"></p>
                         </div>
@@ -1161,7 +1163,7 @@
                                 </svg>
                             </div>
                             <div>
-                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)">About WealthyFlow</p>
+                                <p style="font-size:13px;font-weight:600;color:var(--on-surface)" x-text="t('about')">About WealthyFlow</p>
                                 <p style="font-size:11px;color:var(--outline);margin-top:1px">Version 2.4.1-stable</p>
                                 <p style="font-size:11px;color:var(--outline)">© 2024 WealthyFlow Engineering</p>
                             </div>
@@ -1222,7 +1224,7 @@
                         <rect width="7" height="9" x="14" y="12" rx="1" />
                         <rect width="7" height="5" x="3" y="16" rx="1" />
                     </svg>
-                    <span>Dashboard</span>
+                    <span x-text="t('dashboard')">Dashboard</span>
                 </button>
                 <button class="nav-item" :class="activeTab==='cashflow'?'active':''" @click="activeTab='cashflow'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
@@ -1232,7 +1234,7 @@
                         <path d="m16 21 4-4-4-4" />
                         <path d="M20 17H4" />
                     </svg>
-                    <span>Cashflow</span>
+                    <span x-text="t('cashflow')">Cashflow</span>
                 </button>
                 <button class="nav-item" :class="activeTab==='savings'?'active':''" @click="activeTab='savings'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
@@ -1242,7 +1244,7 @@
                         <path d="M2 9v1c0 1.1.9 2 2 2h1" />
                         <path d="M16 11h.01" />
                     </svg>
-                    <span>Savings</span>
+                    <span x-text="t('savings')">Savings</span>
                 </button>
                 <button class="nav-item" :class="activeTab==='profile'?'active':''" @click="activeTab='profile'">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
@@ -1251,7 +1253,7 @@
                             d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                         <circle cx="12" cy="12" r="3" />
                     </svg>
-                    <span>Settings</span>
+                    <span x-text="t('settings')">Settings</span>
                 </button>
             </nav>
 
