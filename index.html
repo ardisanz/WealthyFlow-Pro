@@ -7,7 +7,7 @@
     <title>WealthyFlow</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
@@ -242,6 +242,14 @@
 
         <!-- MAIN UI WRAPPER -->
         <div x-show="!isLoading" style="display:none;flex:1;flex-direction:column;position:relative">
+            
+            <!-- FAB -->
+            <button class="fab btn-primary" @click="showQuickAdd=true;editingId=null">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
 
             <!-- HEADER -->
             <header class="app-header">
@@ -317,65 +325,24 @@
             <!-- ═══════════ DASHBOARD TAB ═══════════ -->
             <div class="tab-content custom-scroll" x-show="activeTab==='dashboard'" style="display:none">
 
-                <!-- Smart Insight / Financial Health Score -->
-                <div class="card mb-12"
-                    style="border-radius:16px;padding:20px;border-color:var(--outline-2);box-shadow:0 4px 20px rgba(0,0,0,0.03)">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                        <div>
-                            <p
-                                style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--outline);margin-bottom:2px"
-                                x-text="t('financial_health')">
-                                Financial Health</p>
-                            <div style="display:flex;align-items:baseline;gap:4px">
-                                <h1 style="font-size:42px;font-weight:700;letter-spacing:-0.04em;color:var(--on-surface);line-height:1"
-                                    x-text="healthScore.score"></h1>
-                                <span style="font-size:14px;color:var(--outline);font-weight:500">/ 100</span>
-                            </div>
-                        </div>
-                        <div
-                            style="width:56px;height:56px;border-radius:var(--r-full);background:var(--surface-1);display:flex;align-items:center;justify-content:center;border:1px solid var(--outline-2);color:var(--on-surface)">
-                            <template x-if="healthScore.score>=80">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-                                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                                    <path d="M4 22h16" />
-                                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-                                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-                                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-                                </svg>
-                            </template>
-                            <template x-if="healthScore.score>=50 && healthScore.score<80">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                                    <polyline points="16 7 22 7 22 13" />
-                                </svg>
-                            </template>
-                            <template x-if="healthScore.score<50">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path
-                                        d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                                    <line x1="12" y1="9" x2="12" y2="13" />
-                                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                                </svg>
-                            </template>
-                        </div>
+                <!-- Main Balance & Financial Health Hero -->
+                <div class="card card-dark mb-12" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px;">
+                    <div style="flex:1">
+                        <p style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:6px" x-text="t('total_balance')">Total Balance</p>
+                        <h1 style="font-size:36px;font-weight:800;letter-spacing:-0.03em;color:var(--on-primary);line-height:1;margin-bottom:8px" x-text="formatRupiah(totalSaldo)"></h1>
+                        <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')" style="background:rgba(255,255,255,0.15);color:var(--on-primary);border:1px solid rgba(255,255,255,0.2)" x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
                     </div>
-                    <div
-                        style="padding:14px;background:var(--surface-1);border-radius:12px;border:1px solid var(--outline-2)">
-                        <div style="display:flex;align-items:flex-start;gap:10px">
-                            <div style="color:var(--outline);margin-top:2px"><svg width="16" height="16"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <path
-                                        d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5" />
-                                    <path d="M9 18h6" />
-                                    <path d="M10 22h4" />
-                                </svg></div>
-                            <p style="font-size:12px;color:var(--on-surface-2);line-height:1.45;font-weight:500;flex:1"
-                                x-text="healthScore.explanation"></p>
+                    
+                    <div class="health-ring-wrap" style="width:72px;height:72px">
+                        <svg viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6" />
+                            <circle cx="32" cy="32" r="27" fill="none" stroke-width="6" stroke-dasharray="170"
+                                :stroke-dashoffset="isLoading?170:(170-(170*healthScore.score/100))"
+                                :stroke="healthScore.score<=40?'#ef4444':(healthScore.score<=70?'#f59e0b':'#10b981')"
+                                stroke-linecap="round" style="transition:stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)" />
+                        </svg>
+                        <div class="health-ring-center">
+                            <span class="health-score" style="color:#ffffff;font-size:18px;font-weight:800" x-text="healthScore.score"></span>
                         </div>
                     </div>
                 </div>
@@ -420,19 +387,7 @@
                     </div>
                 </template>
 
-                <!-- Quick Add Button -->
-                <div style="margin-bottom:24px">
-                    <button class="btn btn-primary btn-full"
-                        style="height:48px;border-radius:12px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"
-                        @click="showQuickAdd=true;editingId=null">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        <span x-text="t('new_entry')">Add New Transaction</span>
-                    </button>
-                </div>
+
 
                 <!-- Recent History -->
                 <div class="card mb-12">

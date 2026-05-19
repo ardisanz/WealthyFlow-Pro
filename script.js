@@ -1210,7 +1210,7 @@ function moneyApp() {
                         responsive: true, 
                         maintainAspectRatio: false, 
                         plugins: {
-                            legend: { position: 'bottom', labels: { color: '#45464d', font: { size: 11, family: 'Inter' } } }
+                            legend: { position: 'bottom', labels: { color: '#45464d', font: { size: 11, family: 'Plus Jakarta Sans' } } }
                         },
                         onClick: (evt, elements) => {
                             if (elements.length > 0) {
@@ -1228,6 +1228,12 @@ function moneyApp() {
             const ctxLine = document.getElementById('lineChart');
             if (ctxLine && data.line.length > 0) {
                 if (this.charts.line) this.charts.line.destroy();
+                
+                const ctx2d = ctxLine.getContext('2d');
+                let gradient = ctx2d.createLinearGradient(0, 0, 0, ctxLine.height || 130);
+                gradient.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
+                gradient.addColorStop(1, `rgba(${r},${g},${b},0.0)`);
+                
                 this.charts.line = new Chart(ctxLine, {
                     type: 'line',
                     data: {
@@ -1236,12 +1242,25 @@ function moneyApp() {
                             label: 'Balance',
                             data: data.line.map(d => d.y),
                             borderColor: accentHex,
-                            tension: 0.3,
+                            borderWidth: 2,
+                            tension: 0.4,
                             fill: true,
-                            backgroundColor: accentRgba
+                            backgroundColor: gradient,
+                            pointBackgroundColor: accentHex,
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: accentHex
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { color: '#eceef0' } }, y: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { color: '#eceef0' } } } }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { legend: { display: false } }, 
+                        scales: { 
+                            x: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { color: '#eceef0' } }, 
+                            y: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { color: '#eceef0' } } 
+                        } 
+                    }
                 });
             }
 
@@ -1261,7 +1280,7 @@ function moneyApp() {
                             borderRadius: 4
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { display: false } }, y: { ticks: { color: '#76777d', font: { size: 10, family: 'Inter' } }, grid: { color: '#eceef0' } } } }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { display: false } }, y: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { color: '#eceef0' } } } }
                 });
             }
         },
