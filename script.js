@@ -158,16 +158,20 @@ const FinanceLogic = {
     },
     buildChartData: function (transactions, budgets) {
         let pie = { Needs: 0, Wants: 0, Savings: 0 };
-        let line = [];
+        let lineMap = new Map();
         let weekly = {};
         let balance = 0;
         let sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
         sorted.forEach(t => {
             if (t.type === 'income') balance += t.amount;
             else balance -= t.amount;
-            line.push({ x: t.date, y: balance });
+            
+            // Group by day for the line chart (take the latest balance for that day)
+            let d = new Date(t.date);
+            let dateKey = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+            lineMap.set(dateKey, { x: t.date, y: balance });
+            
             if (t.type === 'expense') {
-                let d = new Date(t.date);
                 const now = new Date();
                 if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
                     let type = budgets[t.category]?.type || 'Needs';
@@ -178,6 +182,8 @@ const FinanceLogic = {
                 weekly[weekStr] = (weekly[weekStr] || 0) + t.amount;
             }
         });
+        
+        let line = Array.from(lineMap.values());
         return { pie, line, weekly };
     },
     getWeekNumber: function(d) {

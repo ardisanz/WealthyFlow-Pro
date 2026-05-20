@@ -546,7 +546,7 @@
                         x-text="t('safe_to_spend')">
                         Safe to Spend Today</p>
                     <div class="flex items-center gap-2 sm:gap-3 mb-2">
-                        <p class="text-2xl sm:text-3xl font-bold tracking-tight text-white"
+                        <p class="text-3xl sm:text-4xl font-bold tracking-tight text-white"
                             x-text="formatRupiah(safeToSpend.amount)"></p>
                         <span class="chip text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full"
                             :class="safeToSpend.status==='risk'?'bg-red-500/20 text-red-200 border border-red-500/30':(safeToSpend.status==='caution'?'bg-amber-500/20 text-amber-200 border border-amber-500/30':'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30')"
