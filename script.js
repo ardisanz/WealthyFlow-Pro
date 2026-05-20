@@ -225,6 +225,8 @@ function moneyApp() {
         showQuickAdd: false,
         activeTab: 'dashboard',
         isLoading: true,
+        isSaving: false,
+        isSaved: { transaction: false, ratios: false, recurring: false },
         
         // PWA States
         showInstallPrompt: false,
@@ -649,7 +651,7 @@ function moneyApp() {
 
             // Re-render charts when switching to chart tabs
             this.$watch('activeTab', (tab) => {
-                if (tab === 'cashflow' || tab === 'dashboard') {
+                if (tab === 'cashflow' || tab === 'dashboard' || tab === 'savings') {
                     this.$nextTick(() => this.renderCharts());
                 }
             });
@@ -737,17 +739,30 @@ function moneyApp() {
             let n = Number(this.tempRatios.Needs);
             let w = Number(this.tempRatios.Wants);
             let s = Number(this.tempRatios.Savings);
+            if (n < 0 || w < 0 || s < 0) {
+                this.ratioError = this.language === 'id' ? 'Nilai rasio tidak boleh negatif!' : 'Ratios must be non-negative!';
+                return;
+            }
             if (n + w + s !== 100) {
-                this.ratioError = 'Total ratio must be 100%';
+                this.ratioError = this.language === 'id' ? 'Total rasio harus 100%!' : 'Total ratio must be 100%';
                 return;
             }
             this.ratioError = '';
-            this.ratios = { Needs: n, Wants: w, Savings: s };
-            this.saveData();
-            this.showRatioSettings = false;
-            this.pushNote('Ratios updated successfully!');
-            this.updateAllDerived();
-            this.renderCharts();
+            this.isSaving = true;
+            setTimeout(() => {
+                this.ratios = { Needs: n, Wants: w, Savings: s };
+                this.saveData();
+                this.pushNote('Ratios updated successfully!');
+                this.updateAllDerived();
+                this.renderCharts();
+                this.isSaving = false;
+                this.isSaved.ratios = true;
+
+                setTimeout(() => {
+                    this.isSaved.ratios = false;
+                    this.showRatioSettings = false;
+                }, 1000);
+            }, 600);
         },
 
         getAutoBudgetLimit(type) {
@@ -822,7 +837,7 @@ function moneyApp() {
             if (targetObj) targetObj[targetProp] = num;
             else this.newAmount = num;
 
-            let formatted = val ? new Intl.NumberFormat('en-US').format(num) : '';
+            let formatted = val ? new Intl.NumberFormat('id-ID').format(num) : '';
             el.value = formatted;
             if (!targetObj) this.displayAmount = formatted;
         },
@@ -830,12 +845,12 @@ function moneyApp() {
         handleRecFormat(el) {
             let val = el.value.replace(/[^0-9]/g, '');
             this.newRecAmount = parseInt(val) || 0;
-            this.newRecDisplay = val ? new Intl.NumberFormat('en-US').format(this.newRecAmount) : '';
+            this.newRecDisplay = val ? new Intl.NumberFormat('id-ID').format(this.newRecAmount) : '';
             el.value = this.newRecDisplay;
         },
 
         formatRupiah(num) {
-            return 'Rp ' + new Intl.NumberFormat('en-US').format(num || 0);
+            return 'Rp ' + new Intl.NumberFormat('id-ID').format(num || 0);
         },
 
         formatDate(iso) {
@@ -870,44 +885,55 @@ function moneyApp() {
 
         // --- TRANSACTION LOGIC ---
         addTransaction() {
-            if (this.newAmount <= 0) return;
-
-            if (this.editingId) {
-                // Update existing
-                let t = this.transactions.find(x => x.id === this.editingId);
-                if (t) {
-                    t.amount = this.newAmount;
-                    t.category = this.transactionType === 'income' ? (this.incomeSource || 'Income') : this.newCategory;
-                    t.type = this.transactionType;
-                }
-                this.editingId = null;
-                this.pushNote('Transaction Updated!');
-            } else {
-                // Add new
-                this.transactions.unshift({
-                    id: Date.now(),
-                    amount: this.newAmount,
-                    category: this.transactionType === 'income' ? (this.incomeSource || 'Income') : this.newCategory,
-                    type: this.transactionType,
-                    date: new Date().toISOString(),
-                    isRecurring: false
-                });
-                this.pushNote('Transaction Successful!');
+            if (this.newAmount <= 0) {
+                this.pushNote(this.language === 'id' ? 'Masukkan jumlah nominal yang valid!' : 'Please enter a valid amount!', 'error');
+                return;
             }
+            this.isSaving = true;
 
-            this.newAmount = 0;
-            this.displayAmount = '';
-            this.incomeSource = '';
-            this.showQuickAdd = false;
+            setTimeout(() => {
+                if (this.editingId) {
+                    // Update existing
+                    let t = this.transactions.find(x => x.id === this.editingId);
+                    if (t) {
+                        t.amount = this.newAmount;
+                        t.category = this.transactionType === 'income' ? (this.incomeSource || 'Income') : this.newCategory;
+                        t.type = this.transactionType;
+                    }
+                    this.editingId = null;
+                    this.pushNote('Transaction Updated!');
+                } else {
+                    // Add new
+                    this.transactions.unshift({
+                        id: Date.now(),
+                        amount: this.newAmount,
+                        category: this.transactionType === 'income' ? (this.incomeSource || 'Income') : this.newCategory,
+                        type: this.transactionType,
+                        date: new Date().toISOString(),
+                        isRecurring: false
+                    });
+                    this.pushNote('Transaction Successful!');
+                }
 
-            this.saveData();
+                this.saveData();
+                this.isSaving = false;
+                this.isSaved.transaction = true;
+
+                setTimeout(() => {
+                    this.isSaved.transaction = false;
+                    this.newAmount = 0;
+                    this.displayAmount = '';
+                    this.incomeSource = '';
+                    this.showQuickAdd = false;
+                }, 1000);
+            }, 600);
         },
 
         editTransaction(t) {
             this.editingId = t.id;
             this.transactionType = t.type;
             this.newAmount = t.amount;
-            this.displayAmount = new Intl.NumberFormat('en-US').format(t.amount);
+            this.displayAmount = new Intl.NumberFormat('id-ID').format(t.amount);
             if (t.type === 'income') {
                 this.incomeSource = t.category;
             } else {
@@ -931,19 +957,33 @@ function moneyApp() {
 
 
         addRecurring() {
-            if (this.newRecAmount <= 0 || !this.newRecName || !this.newRecDate) return;
-            this.recurringTransactions.push({
-                id: Date.now(),
-                name: this.newRecName,
-                amount: this.newRecAmount,
-                type: this.newRecType,
-                nextDate: new Date(this.newRecDate).toISOString()
-            });
-            this.saveData();
-            this.pushNote('Recurring Added!');
-            this.newRecName = '';
-            this.newRecAmount = 0;
-            this.newRecDisplay = '';
+            if (this.newRecAmount <= 0 || !this.newRecName || !this.newRecDate) {
+                this.pushNote(this.language === 'id' ? 'Harap lengkapi semua kolom dengan benar!' : 'Please enter valid recurring details!', 'error');
+                return;
+            }
+            this.isSaving = true;
+
+            setTimeout(() => {
+                this.recurringTransactions.push({
+                    id: Date.now(),
+                    name: this.newRecName,
+                    amount: this.newRecAmount,
+                    type: this.newRecType,
+                    nextDate: new Date(this.newRecDate).toISOString()
+                });
+                this.saveData();
+                this.pushNote('Recurring Added!');
+                this.isSaving = false;
+                this.isSaved.recurring = true;
+
+                setTimeout(() => {
+                    this.isSaved.recurring = false;
+                    this.newRecName = '';
+                    this.newRecAmount = 0;
+                    this.newRecDisplay = '';
+                    this.showRecurring = false;
+                }, 1000);
+            }, 600);
         },
 
         deleteRecurring(id) {
@@ -1037,19 +1077,39 @@ function moneyApp() {
         },
 
 
-        pushNote(msg) {
+        pushNote(msg, type = 'success') {
             const id = Date.now();
-            this.notifications.push({ id, msg });
+            this.notifications.push({ id, msg, type });
             setTimeout(() => {
                 this.notifications = this.notifications.filter(n => n.id !== id);
             }, 2500);
+        },
+        getToastIcon(type) {
+            const svgAttrs = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
+            if (type === 'error') {
+                return `<svg ${svgAttrs} style="color: var(--error)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+            }
+            if (type === 'info') {
+                return `<svg ${svgAttrs} style="color: var(--primary)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+            }
+            return `<svg ${svgAttrs} style="color: var(--success)"><polyline points="20 6 9 17 4 12"/></svg>`;
+        },
+        getAdaptiveStyle(numStr, baseSize, minSize = 8) {
+            const len = (numStr || '').length;
+            let size = baseSize;
+            if (len > 12) {
+                size = Math.max(minSize, baseSize - (len - 12) * 0.75);
+            } else if (len > 9) {
+                size = Math.max(minSize, baseSize - (len - 9) * 0.5);
+            }
+            return `font-size: ${size}px !important;`;
         },
 
         // --- SETTINGS ---
         setLanguage(lang) {
             this.language = lang;
             localStorage.setItem('pro_language', lang);
-            this.pushNote('Language preference saved!');
+            this.pushNote('Language preference saved!', 'success');
             // In a real application, you would load translations here
         },
 
@@ -1057,7 +1117,7 @@ function moneyApp() {
             this.darkMode = !this.darkMode;
             localStorage.setItem('pro_darkMode', JSON.stringify(this.darkMode));
             this.applyTheme();
-            this.pushNote(this.darkMode ? 'Dark mode enabled' : 'Light mode enabled');
+            this.pushNote(this.darkMode ? 'Dark mode enabled' : 'Light mode enabled', 'info');
             // Re-render charts with new theme colors
             this.$nextTick(() => this.renderCharts());
         },
@@ -1115,7 +1175,7 @@ function moneyApp() {
             this.accentColor = color;
             localStorage.setItem('pro_accentColor', color);
             this.applyAccentColor();
-            this.pushNote('Accent color updated');
+            this.pushNote('Accent color updated', 'success');
         },
 
         applyAccentColor() {
@@ -1191,6 +1251,41 @@ function moneyApp() {
             const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#000000';
             const surfaceColor = rootStyle.getPropertyValue('--surface-0').trim() || '#ffffff';
             const outlineColor = rootStyle.getPropertyValue('--outline-2').trim() || '#c6c6cd';
+            const warningHex = rootStyle.getPropertyValue('--warning').trim() || '#b45309';
+            const successHex = rootStyle.getPropertyValue('--success').trim() || '#059669';
+
+            // Budget Allocation Donut Chart
+            const ctxAlloc = document.getElementById('allocationChart');
+            if (ctxAlloc) {
+                if (this.charts.allocation) this.charts.allocation.destroy();
+                this.charts.allocation = new Chart(ctxAlloc, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Needs', 'Wants', 'Savings'],
+                        datasets: [{
+                            data: [this.ratios.Needs, this.ratios.Wants, this.ratios.Savings],
+                            backgroundColor: [accentHex, warningHex, successHex],
+                            borderWidth: 2,
+                            borderColor: surfaceColor
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` ${context.label}: ${context.raw}%`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
 
             const ctxPie = document.getElementById('pieChart');
             if (ctxPie) {
@@ -1201,7 +1296,7 @@ function moneyApp() {
                         labels: ['Needs', 'Wants', 'Savings'],
                         datasets: [{
                             data: [data.pie.Needs, data.pie.Wants, data.pie.Savings],
-                            backgroundColor: [accentHex, '#92400e', '#1a6b3a'],
+                            backgroundColor: [accentHex, warningHex, successHex],
                             borderWidth: 2,
                             borderColor: surfaceColor
                         }]
@@ -1305,8 +1400,9 @@ function moneyApp() {
         },
         useCalcResult() {
             const n = parseInt(this.calcDisplay) || 0;
-            this.newAmount = n;
-            this.displayAmount = n ? new Intl.NumberFormat('id-ID').format(n) : '';
+            const clamped = Math.max(0, n);
+            this.newAmount = clamped;
+            this.displayAmount = clamped ? new Intl.NumberFormat('id-ID').format(clamped) : '';
         }
     }
 }

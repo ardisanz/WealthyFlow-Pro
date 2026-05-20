@@ -127,6 +127,7 @@ body {
   border-radius: var(--r-lg); padding: 16px; margin-bottom: 12px;
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
 }
 .card-sm { padding: 12px; }
 .card-dark { background: var(--primary-container); border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15); }
@@ -160,8 +161,8 @@ body {
 .btn-secondary { background: var(--surface-1); color: var(--on-surface); border-color: var(--outline-2); padding: 8px 14px; }
 .btn-secondary:hover { background: var(--surface-2); transform: translateY(-1px); }
 .btn-ghost { background: transparent; color: var(--secondary); padding: 6px 10px; }
-.btn-ghost:hover { background: var(--surface-1); }
 .btn-danger { background: var(--error-container); color: var(--error); border-color: transparent; padding: 6px 10px; font-size: 11px; }
+.btn-success { background: var(--success) !important; color: #ffffff !important; border-color: transparent !important; }
 .btn-full { width: 100%; }
 .btn-icon { width: 32px; height: 32px; padding: 0; border-radius: var(--r); }
 
@@ -269,6 +270,7 @@ body {
   background: var(--surface-0); border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: var(--r-lg); padding: 12px;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
 }
 .stat-tile.dark { background: var(--primary-container); border-color: rgba(255, 255, 255, 0.1); }
 .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--outline); margin-bottom: 4px; }
@@ -347,18 +349,73 @@ body {
 .alert-banner.warning .alert-msg { color: var(--warning); }
 
 /* ── Toast ── */
-.toast-wrap { position: fixed; top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 200; width: auto; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-.toast {
-  background: var(--on-surface); color: var(--surface-0);
-  padding: 12px 20px; border-radius: 99px;
-  font-size: 13px; font-weight: 600;
-  display: flex; align-items: center; gap: 10px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-  animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+.toast-wrap {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  right: 24px;
+  z-index: 9999;
+  width: auto;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
 }
+@media (max-width: 500px) {
+  .toast-wrap {
+    left: 16px;
+    right: 16px;
+    bottom: calc(85px + env(safe-area-inset-bottom));
+    max-width: none;
+    align-items: center;
+  }
+}
+.toast {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+  animation: toastIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.2s ease;
+}
+.toast-success { border-left: 4px solid var(--success); }
+.toast-error { border-left: 4px solid var(--error); }
+.toast-info { border-left: 4px solid var(--primary); }
+.toast-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 @keyframes toastIn {
-  from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Button Loading States ── */
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  top: calc(50% - 9px);
+  left: calc(50% - 9px);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: var(--on-primary);
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ── Utilities ── */

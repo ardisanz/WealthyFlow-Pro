@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/tailwind.css">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
@@ -20,9 +21,12 @@
     <div id="app">
 
         <!-- TOAST -->
-        <div class="toast-wrap" style="top:calc(16px + env(safe-area-inset-top))">
+        <div class="toast-wrap">
             <template x-for="n in notifications" :key="n.id">
-                <div class="toast fade-in"><span>✓</span><span x-text="n.msg"></span></div>
+                <div class="toast fade-in" :class="'toast-' + (n.type || 'success')">
+                    <span class="toast-icon" x-html="getToastIcon(n.type)"></span>
+                    <span x-text="n.msg"></span>
+                </div>
             </template>
         </div>
 
@@ -90,7 +94,8 @@
                 <div class="form-group">
                     <label class="form-label" x-text="t('amount')">Amount</label>
                     <div style="display:flex;gap:8px">
-                        <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)"
+                        <input type="text" inputmode="numeric" min="0" x-model="displayAmount" 
+                            @input="handleFormat($el)" @keypress="if(!/[0-9]/.test($event.key)) $event.preventDefault()"
                             class="input-field large flex-1" placeholder="Rp 0">
                         <button class="btn btn-secondary btn-icon" @click="showCalc=true" title="Calculator"
                             style="width:42px;height:42px">🧮</button>
@@ -109,8 +114,9 @@
                     <label class="form-label" x-text="t('source')">Source</label>
                     <input type="text" x-model="incomeSource" placeholder="Salary, Freelance…" class="input-field">
                 </div>
-                <button class="btn btn-primary btn-full" style="height:44px" @click="addTransaction()"
-                    x-text="editingId?t('update_tx'):t('save_tx')"></button>
+                <button class="btn btn-full" style="height:44px" @click="addTransaction()"
+                    :class="isSaving ? 'btn-primary btn-loading' : (isSaved.transaction ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.transaction"
+                    x-text="isSaving ? '' : (isSaved.transaction ? (language === 'id' ? '✓ Tersimpan' : '✓ Saved') : (editingId?t('update_tx'):t('save_tx')))"></button>
             </div>
         </div>
 
@@ -123,15 +129,18 @@
                 <div style="display:flex;gap:8px;margin-bottom:12px">
                     <div class="flex-1">
                         <label class="form-label">Needs</label>
-                        <input type="number" x-model.number="tempRatios.Needs" class="input-field">
+                        <input type="number" min="0" x-model.number="tempRatios.Needs" 
+                            @keypress="if(!/[0-9]/.test($event.key)) $event.preventDefault()" class="input-field">
                     </div>
                     <div class="flex-1">
                         <label class="form-label">Wants</label>
-                        <input type="number" x-model.number="tempRatios.Wants" class="input-field">
+                        <input type="number" min="0" x-model.number="tempRatios.Wants" 
+                            @keypress="if(!/[0-9]/.test($event.key)) $event.preventDefault()" class="input-field">
                     </div>
                     <div class="flex-1">
                         <label class="form-label">Savings</label>
-                        <input type="number" x-model.number="tempRatios.Savings" class="input-field">
+                        <input type="number" min="0" x-model.number="tempRatios.Savings" 
+                            @keypress="if(!/[0-9]/.test($event.key)) $event.preventDefault()" class="input-field">
                     </div>
                 </div>
                 <p style="font-size:12px;margin-bottom:12px"
@@ -140,7 +149,9 @@
                 </p>
                 <p x-show="ratioError" class="text-error" style="font-size:12px;margin-bottom:8px" x-text="ratioError">
                 </p>
-                <button class="btn btn-primary btn-full" style="height:44px" @click="saveRatios()">Save Ratio</button>
+                <button class="btn btn-full" style="height:44px" @click="saveRatios()"
+                    :class="isSaving ? 'btn-primary btn-loading' : (isSaved.ratios ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.ratios"
+                    x-text="isSaving ? '' : (isSaved.ratios ? (language === 'id' ? '✓ Tersimpan' : '✓ Saved') : (language === 'id' ? 'Simpan Rasio' : 'Save Ratio'))"></button>
             </div>
         </div>
 
@@ -184,7 +195,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Amount</label>
-                    <input type="text" inputmode="numeric" x-model="newRecDisplay" @input="handleRecFormat($el)"
+                    <input type="text" inputmode="numeric" min="0" x-model="newRecDisplay" 
+                        @input="handleRecFormat($el)" @keypress="if(!/[0-9]/.test($event.key)) $event.preventDefault()"
                         placeholder="Rp 0" class="input-field large">
                 </div>
                 <div style="display:flex;gap:8px">
@@ -200,8 +212,9 @@
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-primary btn-full" style="height:44px"
-                    @click="addRecurring();showRecurring=false">Add Recurring</button>
+                <button class="btn btn-full" style="height:44px"
+                    @click="addRecurring()" :class="isSaving ? 'btn-primary btn-loading' : (isSaved.recurring ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.recurring"
+                    x-text="isSaving ? '' : (isSaved.recurring ? (language === 'id' ? '✓ Ditambahkan' : '✓ Added') : (language === 'id' ? 'Tambah Tagihan' : 'Add Recurring'))"></button>
             </div>
         </div>
 
@@ -326,10 +339,10 @@
             <div class="tab-content custom-scroll" x-show="activeTab==='dashboard'" style="display:none">
 
                 <!-- Main Balance & Financial Health Hero -->
-                <div class="card card-dark mb-12" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px;">
-                    <div style="flex:1">
-                        <p style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:6px" x-text="t('total_balance')">Total Balance</p>
-                        <h1 style="font-size:36px;font-weight:800;letter-spacing:-0.03em;color:var(--on-primary);line-height:1;margin-bottom:8px" x-text="formatRupiah(totalSaldo)"></h1>
+                <div class="card card-dark mb-12 flex items-center justify-between gap-4 p-4 sm:p-6">
+                    <div class="flex-1">
+                        <p class="text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-slate-300 mb-1.5" x-text="t('total_balance')">Total Balance</p>
+                        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-2 truncate" :style="getAdaptiveStyle(formatRupiah(totalSaldo), 28, 16)" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></h1>
                         <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')" style="background:rgba(255,255,255,0.15);color:var(--on-primary);border:1px solid rgba(255,255,255,0.2)" x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
                     </div>
                     
@@ -358,15 +371,14 @@
                 </div>
 
                 <!-- Income / Expense tiles -->
-                <div class="stat-grid mb-12">
-                    <div class="stat-tile">
-                        <p class="stat-label" x-text="t('total_income')">Total Income</p>
-                        <p class="stat-value text-success" style="font-size:15px" x-text="formatRupiah(totalIncome)">
-                        </p>
+                <div class="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-12">
+                    <div class="stat-tile flex flex-col justify-between">
+                        <p class="stat-label text-[10px] sm:text-xs text-slate-500 font-semibold" x-text="t('total_income')">Total Income</p>
+                        <p class="stat-value text-success text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(totalIncome), 18, 11)" x-text="formatRupiah(totalIncome)" :title="formatRupiah(totalIncome)"></p>
                     </div>
-                    <div class="stat-tile">
-                        <p class="stat-label" x-text="t('total_expenses')">Total Expenses</p>
-                        <p class="stat-value text-error" style="font-size:15px" x-text="formatRupiah(totalExpense)"></p>
+                    <div class="stat-tile flex flex-col justify-between">
+                        <p class="stat-label text-[10px] sm:text-xs text-slate-500 font-semibold" x-text="t('total_expenses')">Total Expenses</p>
+                        <p class="stat-value text-error text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(totalExpense), 18, 11)" x-text="formatRupiah(totalExpense)" :title="formatRupiah(totalExpense)"></p>
                     </div>
                 </div>
 
@@ -446,7 +458,7 @@
                                         @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
                                         @touchend="sw<-35?sw=-56:sw=0"
                                         :style="`background:var(--surface-0);position:relative;z-index:1;border-radius:var(--r);transform:translateX(${sw}px);transition:transform .2s`"
-                                        @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
+                                        @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('id-ID').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
                                         <div class="list-icon" style="color:var(--on-surface)"
                                             x-html="getCategoryIcon(t.type==='income'?'income':t.category)"></div>
                                         <div class="list-main">
@@ -495,7 +507,8 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" x-text="t('amount')">Amount</label>
-                        <input type="text" inputmode="numeric" x-model="displayAmount" @input="handleFormat($el)"
+                        <input type="text" inputmode="numeric" min="0" x-model="displayAmount" 
+                            @input="handleFormat($el)" @keypress="if(!/[0-9]/.test($event.key)) $event.preventDefault()"
                             class="input-field large" placeholder="Rp 0">
                     </div>
                     <div class="form-group">
@@ -507,8 +520,10 @@
                             </template>
                         </select>
                     </div>
-                    <button class="btn btn-primary btn-full" style="height:40px"
-                        @click="transactionType='expense';addTransaction()" x-text="t('save')">Save</button>
+                    <button class="btn btn-full" style="height:40px"
+                        @click="transactionType='expense';addTransaction()" 
+                        :class="isSaving ? 'btn-primary btn-loading' : (isSaved.transaction ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.transaction"
+                        x-text="isSaving ? '' : (isSaved.transaction ? (language === 'id' ? '✓ Tersimpan' : '✓ Saved') : t('save'))">Save</button>
                 </div>
 
                 <!-- Spending Trend Chart -->
@@ -533,42 +548,35 @@
                         style="font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--on-primary-container);margin-bottom:4px"
                         x-text="t('safe_to_spend')">
                         Safe to Spend Today</p>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-                        <p style="font-size:28px;font-weight:700;letter-spacing:-0.03em;color:var(--on-primary)"
+                    <div class="flex items-center gap-2 sm:gap-3 mb-2">
+                        <p class="text-2xl sm:text-3xl font-bold tracking-tight text-white"
+                            :style="getAdaptiveStyle(formatRupiah(safeToSpend.amount), 24, 14)"
                             x-text="formatRupiah(safeToSpend.amount)"></p>
-                        <span class="chip"
-                            :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')"
+                        <span class="chip text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full"
+                            :class="safeToSpend.status==='risk'?'bg-red-500/20 text-red-200 border border-red-500/30':(safeToSpend.status==='caution'?'bg-amber-500/20 text-amber-200 border border-amber-500/30':'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30')"
                             x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                        <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
-                            <p
-                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px"
-                                x-text="t('remaining_days')">
-                                Remaining Days</p>
-                            <p style="font-size:22px;font-weight:700;color:var(--on-primary)"
-                                x-text="safeToSpend.daysLeft"></p>
+                        <div class="bg-white/10 rounded-lg p-2 sm:p-3">
+                            <p class="text-[9px] sm:text-[10px] text-slate-300 font-semibold uppercase tracking-wider mb-1" x-text="t('remaining_days')">Remaining Days</p>
+                            <p class="text-lg sm:text-xl md:text-2xl font-bold text-white" x-text="safeToSpend.daysLeft"></p>
                         </div>
-                        <div style="background:rgba(255,255,255,0.07);border-radius:var(--r);padding:10px">
-                            <p
-                                style="font-size:10px;color:var(--on-primary-container);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px"
-                                x-text="t('eom_goal')">
-                                End of Month Goal</p>
-                            <p style="font-size:14px;font-weight:700;color:var(--on-primary)"
-                                x-text="formatRupiah(getTypeSpending('Savings'))"></p>
+                        <div class="bg-white/10 rounded-lg p-2 sm:p-3">
+                            <p class="text-[9px] sm:text-[10px] text-slate-300 font-semibold uppercase tracking-wider mb-1" x-text="t('eom_goal')">End of Month Goal</p>
+                            <p class="text-sm sm:text-base md:text-lg font-bold text-white truncate" x-text="formatRupiah(getTypeSpending('Savings'))"></p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Monthly Income / Balance -->
-                <div class="stat-grid mb-12">
-                    <div class="stat-tile dark">
-                        <p class="stat-label" x-text="t('monthly_income')">Monthly Income</p>
-                        <p class="stat-value" x-text="formatRupiah(monthlyIncome)"></p>
+                <div class="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-12">
+                    <div class="stat-tile dark flex flex-col justify-between">
+                        <p class="stat-label text-[10px] sm:text-xs text-slate-400 font-semibold" x-text="t('monthly_income')">Monthly Income</p>
+                        <p class="stat-value text-white text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(monthlyIncome), 18, 11)" x-text="formatRupiah(monthlyIncome)" :title="formatRupiah(monthlyIncome)"></p>
                     </div>
-                    <div class="stat-tile">
-                        <p class="stat-label" x-text="t('total_balance')">Total Balance</p>
-                        <p class="stat-value" x-text="formatRupiah(totalSaldo)"></p>
+                    <div class="stat-tile flex flex-col justify-between">
+                        <p class="stat-label text-[10px] sm:text-xs text-slate-500 font-semibold" x-text="t('total_balance')">Total Balance</p>
+                        <p class="stat-value text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(totalSaldo), 18, 11)" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></p>
                     </div>
                 </div>
 
@@ -591,8 +599,8 @@
                     <div class="proj-item">
                         <div>
                             <p class="proj-label">In 7 Days</p>
-                            <p class="proj-val" :class="projection.days7<0?'text-error':''"
-                                x-text="formatRupiah(projection.days7)"></p>
+                            <p class="proj-val truncate" :class="projection.days7<0?'text-error':''"
+                                x-text="formatRupiah(projection.days7)" :title="formatRupiah(projection.days7)"></p>
                         </div>
                         <span class="chip" :class="projection.days7<0?'chip-error':'chip-success'"
                             x-text="projection.days7<0?'Negative':'Positive'"></span>
@@ -600,8 +608,8 @@
                     <div class="proj-item">
                         <div>
                             <p class="proj-label">In 30 Days</p>
-                            <p class="proj-val" :class="projection.days30<0?'text-error':''"
-                                x-text="formatRupiah(projection.days30)"></p>
+                            <p class="proj-val truncate" :class="projection.days30<0?'text-error':''"
+                                x-text="formatRupiah(projection.days30)" :title="formatRupiah(projection.days30)"></p>
                         </div>
                         <span class="chip" :class="projection.days30<0?'chip-error':'chip-success'"
                             x-text="projection.days30<0?'Negative':'Positive'"></span>
@@ -643,6 +651,9 @@
                     <p style="font-size:12px;color:var(--outline);margin-bottom:12px">Allocated based on your <span
                             style="font-weight:600;color:var(--on-surface)"
                             x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
+                    <div style="display:flex;justify-content:center;align-items:center;margin-bottom:16px;height:120px">
+                        <canvas id="allocationChart" style="max-height:120px"></canvas>
+                    </div>
                     <template x-if="suggestions.length>0">
                         <div class="alert-banner warning mb-12" style="margin-bottom:12px">
                             <span>💡</span>
@@ -658,31 +669,41 @@
                             </div>
                         </div>
                     </template>
-                    <template x-for="type in ['Needs','Wants','Savings']" :key="type">
-                        <div class="saving-item">
-                            <div class="saving-item-hd">
-                                <div>
-                                    <p class="saving-name" x-text="type"></p>
-                                    <p class="saving-ratio" x-text="'RATIO: '+ratios[type]+'%'"></p>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;margin-top:12px">
+                        <template x-for="type in ['Needs','Wants','Savings']" :key="type">
+                            <div class="flex flex-col items-center text-center p-2 rounded-xl"
+                                 style="background:var(--surface-1);border:1px solid var(--outline-2);position:relative;overflow:hidden">
+                                
+                                <p style="font-size:11px;font-weight:700;color:var(--on-surface);margin-bottom:8px" x-text="type"></p>
+                                
+                                <div class="health-ring-wrap" style="width:52px;height:52px;margin:0 auto">
+                                    <svg viewBox="0 0 64 64" style="width:100%;height:100%">
+                                        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6" />
+                                        <circle cx="32" cy="32" r="27" fill="none" stroke-width="6" stroke-dasharray="170"
+                                            :stroke-dashoffset="isLoading?170:(170-(170*Math.min(getTypePercent(type),100)/100))"
+                                            :stroke="type==='Needs'?'var(--accent)':(type==='Wants'?'var(--warning)':'var(--success)')"
+                                            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease" />
+                                    </svg>
+                                    <div class="health-ring-center">
+                                        <span class="health-score" style="font-size:11px;font-weight:700;color:var(--on-surface)" x-text="getTypePercent(type)+'%'"></span>
+                                    </div>
                                 </div>
-                                <p class="saving-amount" x-text="formatRupiah(getTypeSpending(type))"></p>
+                                
+                                <span class="chip" :class="type==='Needs'?'chip-accent':(type==='Wants'?'chip-warning':'chip-success')"
+                                      style="margin-top:8px;font-size:9px;padding:1px 6px"
+                                      x-text="ratios[type]+'%'"></span>
+                                
+                                <p class="truncate" style="font-size:10px;font-weight:700;color:var(--on-surface);margin-top:8px;width:100%;line-height:1.2" x-text="formatRupiah(getTypeSpending(type))" :title="formatRupiah(getTypeSpending(type))"></p>
+                                <p class="truncate" style="font-size:8px;color:var(--outline);margin-top:2px;width:100%;line-height:1" x-text="'/ '+formatRupiah(getAutoBudgetLimit(type))" :title="'Limit: '+formatRupiah(getAutoBudgetLimit(type))"></p>
                             </div>
-                            <div class="progress-track">
-                                <div class="progress-fill"
-                                    :style="'width:'+Math.min(getTypePercent(type),100)+'%;'+(type==='Needs'?'background:var(--accent)':(type==='Wants'?'background:var(--warning-bg);filter:brightness(0.7)':'background:var(--success)'))">
-                                </div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;margin-top:4px">
-                                <p style="font-size:10px;color:var(--outline);font-weight:500"
-                                    x-text="getTypePercent(type)+'% '+t('used')"></p>
-                                <p style="font-size:10px;color:var(--outline);font-weight:500"
-                                    x-text="t('limit')+' '+formatRupiah(getAutoBudgetLimit(type))"></p>
-                            </div>
-                            <p style="font-size:12px;color:var(--on-surface-2);margin-top:4px"
-                                x-text="type==='Needs'?'Essential living expenses and bills.':(type==='Wants'?'Lifestyle, hobbies, and entertainment.':'Emergency fund and future investments.')">
-                            </p>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px;background:var(--surface-2);padding:10px;border-radius:var(--r-sm);font-size:11px;color:var(--on-surface-2)">
+                        <p><strong>Needs:</strong> Essential living expenses and bills.</p>
+                        <p><strong>Wants:</strong> Lifestyle, hobbies, and entertainment.</p>
+                        <p><strong>Savings:</strong> Emergency fund and future investments.</p>
+                    </div>
                 </div>
 
                 <!-- Financial Health -->
@@ -712,29 +733,21 @@
                                 x-text="healthScore.explanation"></p>
                         </div>
                     </div>
-                    <div
-                        style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--outline-2);border:1px solid var(--outline-2);border-radius:var(--r);overflow:hidden">
-                        <div style="background:var(--surface-0);padding:10px;text-align:center">
-                            <p
-                                style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">
-                                Saving</p>
-                            <p style="font-size:13px;font-weight:700;color:var(--success);margin-top:2px"
-                                x-text="healthScore.breakdown.savingsRate+'%'"></p>
+                    <div class="grid grid-cols-3 gap-[1px] bg-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                        <div class="bg-white/85 p-2 sm:p-3 text-center flex flex-col justify-center">
+                            <p class="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-500 tracking-wider">Saving</p>
+                            <p class="text-xs sm:text-sm md:text-base font-bold text-emerald-600 mt-1" x-text="healthScore.breakdown.savingsRate+'%'"></p>
                         </div>
-                        <div style="background:var(--surface-0);padding:10px;text-align:center">
-                            <p
-                                style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">
-                                Wants</p>
-                            <p style="font-size:13px;font-weight:700;margin-top:2px"
-                                :class="healthScore.breakdown.wantsLevel==='High'?'text-error':'text-success'"
+                        <div class="bg-white/85 p-2 sm:p-3 text-center flex flex-col justify-center">
+                            <p class="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-500 tracking-wider">Wants</p>
+                            <p class="text-xs sm:text-sm md:text-base font-bold mt-1"
+                                :class="healthScore.breakdown.wantsLevel==='High'?'text-rose-600':'text-emerald-600'"
                                 x-text="healthScore.breakdown.wantsLevel"></p>
                         </div>
-                        <div style="background:var(--surface-0);padding:10px;text-align:center">
-                            <p
-                                style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.04em">
-                                Stable</p>
-                            <p style="font-size:13px;font-weight:700;margin-top:2px"
-                                :class="healthScore.breakdown.consistency==='Stable'?'text-success':'text-error'"
+                        <div class="bg-white/85 p-2 sm:p-3 text-center flex flex-col justify-center">
+                            <p class="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-500 tracking-wider">Stable</p>
+                            <p class="text-xs sm:text-sm md:text-base font-bold mt-1"
+                                :class="healthScore.breakdown.consistency==='Stable'?'text-emerald-600':'text-rose-600'"
                                 x-text="healthScore.breakdown.consistency==='Stable'?'Yes':'No'"></p>
                         </div>
                     </div>
@@ -845,7 +858,7 @@
                                             @touchmove.passive="let d=$event.touches[0].clientX-sx;if(d<0&&d>-70)sw=d"
                                             @touchend="sw<-35?sw=-56:sw=0"
                                             :style="`background:var(--surface-0);position:relative;z-index:1;transform:translateX(${sw}px);transition:transform .2s`"
-                                            @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('en-US').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
+                                            @click="if(sw===0){editingId=t.id;transactionType=t.type;newAmount=t.amount;displayAmount=new Intl.NumberFormat('id-ID').format(t.amount);t.type==='income'?incomeSource=t.category:newCategory=t.category;showQuickAdd=true}">
                                             <div class="list-icon" style="color:var(--on-surface)"
                                                 x-html="getCategoryIcon(t.type==='income'?'income':t.category)"></div>
                                             <div class="list-main">
