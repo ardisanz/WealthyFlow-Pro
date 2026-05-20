@@ -21,12 +21,9 @@
     <div id="app">
 
         <!-- TOAST -->
-        <div class="toast-wrap">
+        <div class="toast-wrap" style="top:calc(16px + env(safe-area-inset-top))">
             <template x-for="n in notifications" :key="n.id">
-                <div class="toast fade-in" :class="'toast-' + (n.type || 'success')">
-                    <span class="toast-icon" x-html="getToastIcon(n.type)"></span>
-                    <span x-text="n.msg"></span>
-                </div>
+                <div class="toast fade-in"><span>✓</span><span x-text="n.msg"></span></div>
             </template>
         </div>
 
@@ -48,7 +45,7 @@
         <div class="overlay" x-show="showCalc" x-cloak @click.self="showCalc=false" style="display:none">
             <div class="sheet" style="max-width:430px">
                 <div class="sheet-handle"></div>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div class="flex justify-between items-center mb-12">
                     <p class="sheet-title" style="margin:0">Calculator</p>
                     <button class="btn btn-ghost" @click="showCalc=false">✕</button>
                 </div>
@@ -81,7 +78,7 @@
             style="display:none">
             <div class="sheet" style="max-width:430px">
                 <div class="sheet-handle"></div>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div class="flex justify-between items-center mb-16">
                     <p class="sheet-title" style="margin:0" x-text="editingId?t('edit_entry_title'):t('new_entry_title')"></p>
                     <button class="btn btn-ghost" @click="showQuickAdd=false;editingId=null">✕</button>
                 </div>
@@ -114,9 +111,9 @@
                     <label class="form-label" x-text="t('source')">Source</label>
                     <input type="text" x-model="incomeSource" placeholder="Salary, Freelance…" class="input-field">
                 </div>
-                <button class="btn btn-full" style="height:44px" @click="addTransaction()"
-                    :class="isSaving ? 'btn-primary btn-loading' : (isSaved.transaction ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.transaction"
-                    x-text="isSaving ? '' : (isSaved.transaction ? (language === 'id' ? '✓ Tersimpan' : '✓ Saved') : (editingId?t('update_tx'):t('save_tx')))"></button>
+                <button class="btn btn-primary btn-full" style="height:44px" @click="addTransaction()"
+                    :class="isSaving ? 'btn-loading' : ''" :disabled="isSaving"
+                    x-text="isSaving ? '' : (editingId?t('update_tx'):t('save_tx'))"></button>
             </div>
         </div>
 
@@ -149,9 +146,9 @@
                 </p>
                 <p x-show="ratioError" class="text-error" style="font-size:12px;margin-bottom:8px" x-text="ratioError">
                 </p>
-                <button class="btn btn-full" style="height:44px" @click="saveRatios()"
-                    :class="isSaving ? 'btn-primary btn-loading' : (isSaved.ratios ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.ratios"
-                    x-text="isSaving ? '' : (isSaved.ratios ? (language === 'id' ? '✓ Tersimpan' : '✓ Saved') : (language === 'id' ? 'Simpan Rasio' : 'Save Ratio'))"></button>
+                <button class="btn btn-primary btn-full" style="height:44px" @click="saveRatios()"
+                    :class="isSaving ? 'btn-loading' : ''" :disabled="isSaving"
+                    x-text="isSaving ? '' : 'Save Ratio'"></button>
             </div>
         </div>
 
@@ -212,9 +209,9 @@
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-full" style="height:44px"
-                    @click="addRecurring()" :class="isSaving ? 'btn-primary btn-loading' : (isSaved.recurring ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.recurring"
-                    x-text="isSaving ? '' : (isSaved.recurring ? (language === 'id' ? '✓ Ditambahkan' : '✓ Added') : (language === 'id' ? 'Tambah Tagihan' : 'Add Recurring'))"></button>
+                <button class="btn btn-primary btn-full" style="height:44px"
+                    @click="addRecurring()" :class="isSaving ? 'btn-loading' : ''" :disabled="isSaving"
+                    x-text="isSaving ? '' : 'Add Recurring'"></button>
             </div>
         </div>
 
@@ -240,7 +237,7 @@
         <!-- GLOBAL LOADING STATE -->
         <div x-show="isLoading" class="custom-scroll"
             style="padding:16px;flex:1;display:flex;flex-direction:column;gap:16px;padding-top:calc(16px + env(safe-area-inset-top))">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div class="flex justify-between items-center mb-16">
                 <div class="skeleton" style="width:120px;height:24px"></div>
                 <div class="skeleton" style="width:32px;height:32px;border-radius:var(--r-full)"></div>
             </div>
@@ -342,7 +339,7 @@
                 <div class="card card-dark mb-12 flex items-center justify-between gap-4 p-4 sm:p-6">
                     <div class="flex-1">
                         <p class="text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-slate-300 mb-1.5" x-text="t('total_balance')">Total Balance</p>
-                        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-2 truncate" :style="getAdaptiveStyle(formatRupiah(totalSaldo), 28, 16)" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></h1>
+                        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-2 truncate" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></h1>
                         <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')" style="background:rgba(255,255,255,0.15);color:var(--on-primary);border:1px solid rgba(255,255,255,0.2)" x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
                     </div>
                     
@@ -361,7 +358,7 @@
                 </div>
 
                 <!-- Weekly Overview Header -->
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                <div class="flex justify-between mb-12" style="align-items:flex-start">
                     <div>
                         <p class="section-label" style="margin-bottom:2px" x-text="t('weekly_overview')">Weekly Overview</p>
                         <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)" x-text="t('cashflow_momentum')">
@@ -374,11 +371,11 @@
                 <div class="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-12">
                     <div class="stat-tile flex flex-col justify-between">
                         <p class="stat-label text-[10px] sm:text-xs text-slate-500 font-semibold" x-text="t('total_income')">Total Income</p>
-                        <p class="stat-value text-success text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(totalIncome), 18, 11)" x-text="formatRupiah(totalIncome)" :title="formatRupiah(totalIncome)"></p>
+                        <p class="stat-value text-success text-sm sm:text-base md:text-lg truncate" x-text="formatRupiah(totalIncome)" :title="formatRupiah(totalIncome)"></p>
                     </div>
                     <div class="stat-tile flex flex-col justify-between">
                         <p class="stat-label text-[10px] sm:text-xs text-slate-500 font-semibold" x-text="t('total_expenses')">Total Expenses</p>
-                        <p class="stat-value text-error text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(totalExpense), 18, 11)" x-text="formatRupiah(totalExpense)" :title="formatRupiah(totalExpense)"></p>
+                        <p class="stat-value text-error text-sm sm:text-base md:text-lg truncate" x-text="formatRupiah(totalExpense)" :title="formatRupiah(totalExpense)"></p>
                     </div>
                 </div>
 
@@ -520,10 +517,10 @@
                             </template>
                         </select>
                     </div>
-                    <button class="btn btn-full" style="height:40px"
+                    <button class="btn btn-primary btn-full" style="height:40px"
                         @click="transactionType='expense';addTransaction()" 
-                        :class="isSaving ? 'btn-primary btn-loading' : (isSaved.transaction ? 'btn-success' : 'btn-primary')" :disabled="isSaving || isSaved.transaction"
-                        x-text="isSaving ? '' : (isSaved.transaction ? (language === 'id' ? '✓ Tersimpan' : '✓ Saved') : t('save'))">Save</button>
+                        :class="isSaving ? 'btn-loading' : ''" :disabled="isSaving"
+                        x-text="isSaving ? '' : t('save')">Save</button>
                 </div>
 
                 <!-- Spending Trend Chart -->
@@ -535,7 +532,7 @@
                             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                         </svg>
                     </div>
-                    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+                    <div class="chart-wrap" x-ignore><canvas id="barChart"></canvas></div>
                 </div>
 
             </div><!-- /dashboard tab -->
@@ -550,7 +547,6 @@
                         Safe to Spend Today</p>
                     <div class="flex items-center gap-2 sm:gap-3 mb-2">
                         <p class="text-2xl sm:text-3xl font-bold tracking-tight text-white"
-                            :style="getAdaptiveStyle(formatRupiah(safeToSpend.amount), 24, 14)"
                             x-text="formatRupiah(safeToSpend.amount)"></p>
                         <span class="chip text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full"
                             :class="safeToSpend.status==='risk'?'bg-red-500/20 text-red-200 border border-red-500/30':(safeToSpend.status==='caution'?'bg-amber-500/20 text-amber-200 border border-amber-500/30':'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30')"
@@ -572,11 +568,11 @@
                 <div class="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-12">
                     <div class="stat-tile dark flex flex-col justify-between">
                         <p class="stat-label text-[10px] sm:text-xs text-slate-400 font-semibold" x-text="t('monthly_income')">Monthly Income</p>
-                        <p class="stat-value text-white text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(monthlyIncome), 18, 11)" x-text="formatRupiah(monthlyIncome)" :title="formatRupiah(monthlyIncome)"></p>
+                        <p class="stat-value text-white text-sm sm:text-base md:text-lg truncate" x-text="formatRupiah(monthlyIncome)" :title="formatRupiah(monthlyIncome)"></p>
                     </div>
                     <div class="stat-tile flex flex-col justify-between">
                         <p class="stat-label text-[10px] sm:text-xs text-slate-500 font-semibold" x-text="t('total_balance')">Total Balance</p>
-                        <p class="stat-value text-sm sm:text-base md:text-lg truncate" :style="getAdaptiveStyle(formatRupiah(totalSaldo), 18, 11)" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></p>
+                        <p class="stat-value text-sm sm:text-base md:text-lg truncate" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></p>
                     </div>
                 </div>
 
@@ -621,7 +617,7 @@
                     <div class="section-hd">
                         <h2 x-text="t('balance_over_time')">Balance Over Time</h2>
                     </div>
-                    <div class="chart-wrap" style="height:130px"><canvas id="lineChart"></canvas></div>
+                    <div class="chart-wrap" style="height:130px" x-ignore><canvas id="lineChart"></canvas></div>
                 </div>
 
                 <!-- Pie Distribution -->
@@ -629,7 +625,7 @@
                     <div class="section-hd">
                         <h2 x-text="t('expense_dist')">Expense Distribution</h2>
                     </div>
-                    <div style="height:170px"><canvas id="pieChart"></canvas></div>
+                    <div style="height:170px" x-ignore><canvas id="pieChart"></canvas></div>
                 </div>
 
             </div><!-- /cashflow tab -->
@@ -651,9 +647,6 @@
                     <p style="font-size:12px;color:var(--outline);margin-bottom:12px">Allocated based on your <span
                             style="font-weight:600;color:var(--on-surface)"
                             x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
-                    <div style="display:flex;justify-content:center;align-items:center;margin-bottom:16px;height:120px">
-                        <canvas id="allocationChart" style="max-height:120px"></canvas>
-                    </div>
                     <template x-if="suggestions.length>0">
                         <div class="alert-banner warning mb-12" style="margin-bottom:12px">
                             <span>💡</span>
@@ -733,21 +726,24 @@
                                 x-text="healthScore.explanation"></p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-[1px] bg-slate-200 border border-slate-200 rounded-lg overflow-hidden">
-                        <div class="bg-white/85 p-2 sm:p-3 text-center flex flex-col justify-center">
-                            <p class="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-500 tracking-wider">Saving</p>
-                            <p class="text-xs sm:text-sm md:text-base font-bold text-emerald-600 mt-1" x-text="healthScore.breakdown.savingsRate+'%'"></p>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px">
+                        <div class="flex flex-col items-center text-center p-2 rounded-xl"
+                             style="background:var(--surface-1);border:1px solid var(--outline-2)">
+                            <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.05em">Saving</p>
+                            <p style="font-size:14px;font-weight:700;color:var(--success);margin-top:4px" x-text="healthScore.breakdown.savingsRate+'%'"></p>
                         </div>
-                        <div class="bg-white/85 p-2 sm:p-3 text-center flex flex-col justify-center">
-                            <p class="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-500 tracking-wider">Wants</p>
-                            <p class="text-xs sm:text-sm md:text-base font-bold mt-1"
-                                :class="healthScore.breakdown.wantsLevel==='High'?'text-rose-600':'text-emerald-600'"
+                        <div class="flex flex-col items-center text-center p-2 rounded-xl"
+                             style="background:var(--surface-1);border:1px solid var(--outline-2)">
+                            <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.05em">Wants</p>
+                            <p style="font-size:14px;font-weight:700;margin-top:4px"
+                                :style="healthScore.breakdown.wantsLevel==='High'?'color:var(--error)':'color:var(--success)'"
                                 x-text="healthScore.breakdown.wantsLevel"></p>
                         </div>
-                        <div class="bg-white/85 p-2 sm:p-3 text-center flex flex-col justify-center">
-                            <p class="text-[9px] sm:text-[10px] font-semibold uppercase text-slate-500 tracking-wider">Stable</p>
-                            <p class="text-xs sm:text-sm md:text-base font-bold mt-1"
-                                :class="healthScore.breakdown.consistency==='Stable'?'text-emerald-600':'text-rose-600'"
+                        <div class="flex flex-col items-center text-center p-2 rounded-xl"
+                             style="background:var(--surface-1);border:1px solid var(--outline-2)">
+                            <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.05em">Stable</p>
+                            <p style="font-size:14px;font-weight:700;margin-top:4px"
+                                :style="healthScore.breakdown.consistency==='Stable'?'color:var(--success)':'color:var(--error)'"
                                 x-text="healthScore.breakdown.consistency==='Stable'?'Yes':'No'"></p>
                         </div>
                     </div>
@@ -790,7 +786,7 @@
             <!-- ═══════════ HISTORY TAB ═══════════ -->
             <div class="tab-content custom-scroll" x-show="activeTab==='history'" style="display:none">
 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div class="flex justify-between items-center mb-12">
                     <h2 style="font-size:16px;font-weight:700;color:var(--on-surface)" x-text="t('history_title')">Transaction History</h2>
                     <div style="display:flex;align-items:center;gap:8px">
                         <template x-if="categoryFilter">
@@ -909,8 +905,7 @@
                 <div class="card mb-12" style="padding:0">
 
                     <!-- Dark Mode -->
-                    <div
-                        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2)">
+                    <div class="profile-menu-item">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -989,8 +984,7 @@
                 <div class="card mb-12" style="padding:0">
 
                     <!-- Backup & Restore -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
-                        @click="triggerImport()">
+                    <div class="profile-menu-item" @click="triggerImport()">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1010,8 +1004,7 @@
                     </div>
 
                     <!-- Export Data -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
-                        @click="exportData()">
+                    <div class="profile-menu-item" @click="exportData()">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1032,8 +1025,7 @@
                     </div>
 
                     <!-- Clear All Data -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer"
-                        @click="clearHistory()">
+                    <div class="profile-menu-item" @click="clearHistory()">
                         <div class="list-icon"
                             style="width:32px;height:32px;background:var(--error-container);color:var(--error);border-color:transparent">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -1055,8 +1047,7 @@
                 <div class="card mb-12" style="padding:0">
 
                     <!-- Language -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
-                        @click="showLanguage=true">
+                    <div class="profile-menu-item" @click="showLanguage=true">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1077,8 +1068,7 @@
                     </div>
 
                     <!-- Categories -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
-                        @click="showAddCategory=true">
+                    <div class="profile-menu-item" @click="showAddCategory=true">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1097,8 +1087,7 @@
                     </div>
 
                     <!-- Budget Ratios -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer"
-                        @click="showRatioSettings=true">
+                    <div class="profile-menu-item" @click="showRatioSettings=true">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1139,8 +1128,7 @@
                     </div>
 
                     <!-- Help & FAQ -->
-                    <div
-                        style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--outline-2);cursor:pointer">
+                    <div class="profile-menu-item">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1161,7 +1149,7 @@
                     </div>
 
                     <!-- Feedback -->
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer">
+                    <div class="profile-menu-item">
                         <div class="list-icon" style="width:32px;height:32px">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

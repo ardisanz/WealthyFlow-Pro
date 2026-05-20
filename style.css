@@ -161,8 +161,8 @@ body {
 .btn-secondary { background: var(--surface-1); color: var(--on-surface); border-color: var(--outline-2); padding: 8px 14px; }
 .btn-secondary:hover { background: var(--surface-2); transform: translateY(-1px); }
 .btn-ghost { background: transparent; color: var(--secondary); padding: 6px 10px; }
+.btn-ghost:hover { background: var(--surface-1); }
 .btn-danger { background: var(--error-container); color: var(--error); border-color: transparent; padding: 6px 10px; font-size: 11px; }
-.btn-success { background: var(--success) !important; color: #ffffff !important; border-color: transparent !important; }
 .btn-full { width: 100%; }
 .btn-icon { width: 32px; height: 32px; padding: 0; border-radius: var(--r); }
 
@@ -385,12 +385,7 @@ body {
   gap: 8px;
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
   animation: toastIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transition: all 0.2s ease;
 }
-.toast-success { border-left: 4px solid var(--success); }
-.toast-error { border-left: 4px solid var(--error); }
-.toast-info { border-left: 4px solid var(--primary); }
-.toast-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(12px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -430,9 +425,14 @@ body {
 .fs-13 { font-size: 13px; }
 
 .flex { display: flex; }
+.flex-col { flex-direction: column; }
 .flex-1 { flex: 1; }
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.grid { display: grid; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
@@ -446,10 +446,28 @@ body {
 .mb-8 { margin-bottom: 8px; }
 .mb-12 { margin-bottom: 12px; }
 .mb-16 { margin-bottom: 16px; }
+.p-2 { padding: 8px; }
 .w-full { width: 100%; }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
+.rounded-lg { border-radius: 8px; }
+.rounded-xl { border-radius: 12px; }
+.overflow-hidden { overflow: hidden; }
 .truncate { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cursor-pointer { cursor: pointer; }
+
+/* Custom Component Classes */
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--outline-2);
+  cursor: pointer;
+}
+.profile-menu-item:last-child {
+  border-bottom: none;
+}
 
 [x-cloak] { display: none !important; }
 

@@ -226,7 +226,6 @@ function moneyApp() {
         activeTab: 'dashboard',
         isLoading: true,
         isSaving: false,
-        isSaved: { transaction: false, ratios: false, recurring: false },
         
         // PWA States
         showInstallPrompt: false,
@@ -278,11 +277,10 @@ function moneyApp() {
         chartType: 'weekly', // 'weekly' or 'monthly'
         categoryFilter: null,
 
-        // Calculators & Charts
+        // calculators & charts
         showCalc: false,
         calcDisplay: '0',
         calcExpression: '',
-        charts: { pie: null, line: null, bar: null },
 
         // Settings
         darkMode: false,
@@ -651,7 +649,7 @@ function moneyApp() {
 
             // Re-render charts when switching to chart tabs
             this.$watch('activeTab', (tab) => {
-                if (tab === 'cashflow' || tab === 'dashboard' || tab === 'savings') {
+                if (tab === 'cashflow' || tab === 'dashboard') {
                     this.$nextTick(() => this.renderCharts());
                 }
             });
@@ -739,12 +737,8 @@ function moneyApp() {
             let n = Number(this.tempRatios.Needs);
             let w = Number(this.tempRatios.Wants);
             let s = Number(this.tempRatios.Savings);
-            if (n < 0 || w < 0 || s < 0) {
-                this.ratioError = this.language === 'id' ? 'Nilai rasio tidak boleh negatif!' : 'Ratios must be non-negative!';
-                return;
-            }
             if (n + w + s !== 100) {
-                this.ratioError = this.language === 'id' ? 'Total rasio harus 100%!' : 'Total ratio must be 100%';
+                this.ratioError = 'Total ratio must be 100%';
                 return;
             }
             this.ratioError = '';
@@ -752,16 +746,11 @@ function moneyApp() {
             setTimeout(() => {
                 this.ratios = { Needs: n, Wants: w, Savings: s };
                 this.saveData();
+                this.showRatioSettings = false;
                 this.pushNote('Ratios updated successfully!');
                 this.updateAllDerived();
                 this.renderCharts();
                 this.isSaving = false;
-                this.isSaved.ratios = true;
-
-                setTimeout(() => {
-                    this.isSaved.ratios = false;
-                    this.showRatioSettings = false;
-                }, 1000);
             }, 600);
         },
 
@@ -885,10 +874,7 @@ function moneyApp() {
 
         // --- TRANSACTION LOGIC ---
         addTransaction() {
-            if (this.newAmount <= 0) {
-                this.pushNote(this.language === 'id' ? 'Masukkan jumlah nominal yang valid!' : 'Please enter a valid amount!', 'error');
-                return;
-            }
+            if (this.newAmount <= 0) return;
             this.isSaving = true;
 
             setTimeout(() => {
@@ -915,17 +901,12 @@ function moneyApp() {
                     this.pushNote('Transaction Successful!');
                 }
 
+                this.newAmount = 0;
+                this.displayAmount = '';
+                this.incomeSource = '';
+                this.showQuickAdd = false;
                 this.saveData();
                 this.isSaving = false;
-                this.isSaved.transaction = true;
-
-                setTimeout(() => {
-                    this.isSaved.transaction = false;
-                    this.newAmount = 0;
-                    this.displayAmount = '';
-                    this.incomeSource = '';
-                    this.showQuickAdd = false;
-                }, 1000);
             }, 600);
         },
 
@@ -957,10 +938,7 @@ function moneyApp() {
 
 
         addRecurring() {
-            if (this.newRecAmount <= 0 || !this.newRecName || !this.newRecDate) {
-                this.pushNote(this.language === 'id' ? 'Harap lengkapi semua kolom dengan benar!' : 'Please enter valid recurring details!', 'error');
-                return;
-            }
+            if (this.newRecAmount <= 0 || !this.newRecName || !this.newRecDate) return;
             this.isSaving = true;
 
             setTimeout(() => {
@@ -973,16 +951,11 @@ function moneyApp() {
                 });
                 this.saveData();
                 this.pushNote('Recurring Added!');
+                this.newRecName = '';
+                this.newRecAmount = 0;
+                this.newRecDisplay = '';
+                this.showRecurring = false;
                 this.isSaving = false;
-                this.isSaved.recurring = true;
-
-                setTimeout(() => {
-                    this.isSaved.recurring = false;
-                    this.newRecName = '';
-                    this.newRecAmount = 0;
-                    this.newRecDisplay = '';
-                    this.showRecurring = false;
-                }, 1000);
             }, 600);
         },
 
@@ -1077,39 +1050,19 @@ function moneyApp() {
         },
 
 
-        pushNote(msg, type = 'success') {
+        pushNote(msg) {
             const id = Date.now();
-            this.notifications.push({ id, msg, type });
+            this.notifications.push({ id, msg });
             setTimeout(() => {
                 this.notifications = this.notifications.filter(n => n.id !== id);
             }, 2500);
-        },
-        getToastIcon(type) {
-            const svgAttrs = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
-            if (type === 'error') {
-                return `<svg ${svgAttrs} style="color: var(--error)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-            }
-            if (type === 'info') {
-                return `<svg ${svgAttrs} style="color: var(--primary)"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
-            }
-            return `<svg ${svgAttrs} style="color: var(--success)"><polyline points="20 6 9 17 4 12"/></svg>`;
-        },
-        getAdaptiveStyle(numStr, baseSize, minSize = 8) {
-            const len = (numStr || '').length;
-            let size = baseSize;
-            if (len > 12) {
-                size = Math.max(minSize, baseSize - (len - 12) * 0.75);
-            } else if (len > 9) {
-                size = Math.max(minSize, baseSize - (len - 9) * 0.5);
-            }
-            return `font-size: ${size}px !important;`;
         },
 
         // --- SETTINGS ---
         setLanguage(lang) {
             this.language = lang;
             localStorage.setItem('pro_language', lang);
-            this.pushNote('Language preference saved!', 'success');
+            this.pushNote('Language preference saved!');
             // In a real application, you would load translations here
         },
 
@@ -1117,7 +1070,7 @@ function moneyApp() {
             this.darkMode = !this.darkMode;
             localStorage.setItem('pro_darkMode', JSON.stringify(this.darkMode));
             this.applyTheme();
-            this.pushNote(this.darkMode ? 'Dark mode enabled' : 'Light mode enabled', 'info');
+            this.pushNote(this.darkMode ? 'Dark mode enabled' : 'Light mode enabled');
             // Re-render charts with new theme colors
             this.$nextTick(() => this.renderCharts());
         },
@@ -1175,7 +1128,7 @@ function moneyApp() {
             this.accentColor = color;
             localStorage.setItem('pro_accentColor', color);
             this.applyAccentColor();
-            this.pushNote('Accent color updated', 'success');
+            this.pushNote('Accent color updated');
         },
 
         applyAccentColor() {
@@ -1251,52 +1204,19 @@ function moneyApp() {
             const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#000000';
             const surfaceColor = rootStyle.getPropertyValue('--surface-0').trim() || '#ffffff';
             const outlineColor = rootStyle.getPropertyValue('--outline-2').trim() || '#c6c6cd';
-            const warningHex = rootStyle.getPropertyValue('--warning').trim() || '#b45309';
-            const successHex = rootStyle.getPropertyValue('--success').trim() || '#059669';
-
-            // Budget Allocation Donut Chart
-            const ctxAlloc = document.getElementById('allocationChart');
-            if (ctxAlloc) {
-                if (this.charts.allocation) this.charts.allocation.destroy();
-                this.charts.allocation = new Chart(ctxAlloc, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Needs', 'Wants', 'Savings'],
-                        datasets: [{
-                            data: [this.ratios.Needs, this.ratios.Wants, this.ratios.Savings],
-                            backgroundColor: [accentHex, warningHex, successHex],
-                            borderWidth: 2,
-                            borderColor: surfaceColor
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '75%',
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return ` ${context.label}: ${context.raw}%`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
 
             const ctxPie = document.getElementById('pieChart');
+            window.appCharts = window.appCharts || { pie: null, line: null, bar: null };
+            
             if (ctxPie) {
-                if (this.charts.pie) this.charts.pie.destroy();
-                this.charts.pie = new Chart(ctxPie, {
+                if (window.appCharts.pie) window.appCharts.pie.destroy();
+                window.appCharts.pie = new Chart(ctxPie, {
                     type: 'doughnut',
                     data: {
                         labels: ['Needs', 'Wants', 'Savings'],
                         datasets: [{
                             data: [data.pie.Needs, data.pie.Wants, data.pie.Savings],
-                            backgroundColor: [accentHex, warningHex, successHex],
+                            backgroundColor: [accentHex, '#92400e', '#1a6b3a'],
                             borderWidth: 2,
                             borderColor: surfaceColor
                         }]
@@ -1310,7 +1230,7 @@ function moneyApp() {
                         onClick: (evt, elements) => {
                             if (elements.length > 0) {
                                 const index = elements[0].index;
-                                const label = this.charts.pie.data.labels[index];
+                                const label = window.appCharts.pie.data.labels[index];
                                 // Map Needs/Wants/Savings to a more useful filter or show category list
                                 this.pushNote(`Filter by type: ${label}`);
                             }
@@ -1322,14 +1242,14 @@ function moneyApp() {
 
             const ctxLine = document.getElementById('lineChart');
             if (ctxLine && data.line.length > 0) {
-                if (this.charts.line) this.charts.line.destroy();
+                if (window.appCharts.line) window.appCharts.line.destroy();
                 
                 const ctx2d = ctxLine.getContext('2d');
                 let gradient = ctx2d.createLinearGradient(0, 0, 0, ctxLine.height || 130);
                 gradient.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
                 gradient.addColorStop(1, `rgba(${r},${g},${b},0.0)`);
                 
-                this.charts.line = new Chart(ctxLine, {
+                window.appCharts.line = new Chart(ctxLine, {
                     type: 'line',
                     data: {
                         labels: data.line.map(d => this.formatDate(d.x)),
@@ -1361,10 +1281,10 @@ function moneyApp() {
 
             const ctxBar = document.getElementById('barChart');
             if (ctxBar) {
-                if (this.charts.bar) this.charts.bar.destroy();
+                if (window.appCharts.bar) window.appCharts.bar.destroy();
                 let weeks = Object.keys(data.weekly).sort();
                 let weekVals = weeks.map(w => data.weekly[w]);
-                this.charts.bar = new Chart(ctxBar, {
+                window.appCharts.bar = new Chart(ctxBar, {
                     type: 'bar',
                     data: {
                         labels: weeks,
@@ -1400,9 +1320,8 @@ function moneyApp() {
         },
         useCalcResult() {
             const n = parseInt(this.calcDisplay) || 0;
-            const clamped = Math.max(0, n);
-            this.newAmount = clamped;
-            this.displayAmount = clamped ? new Intl.NumberFormat('id-ID').format(clamped) : '';
+            this.newAmount = n;
+            this.displayAmount = n ? new Intl.NumberFormat('id-ID').format(n) : '';
         }
     }
 }
