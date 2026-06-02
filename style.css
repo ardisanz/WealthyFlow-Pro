@@ -25,11 +25,11 @@
   --accent-bg: #f1f5f9;
   --warning: #b45309;
   --warning-bg: #fef3c7;
-  --r-sm: 4px;
-  --r: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 24px;
+  --r-sm: 8px;
+  --r: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 28px;
   --r-full: 9999px;
 }
 
@@ -124,12 +124,12 @@ body {
 /* ── Cards ── */
 .card {
   background: var(--surface-0); border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: var(--r-lg); padding: 16px; margin-bottom: 12px;
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.04);
+  border-radius: var(--r-xl); padding: 20px; margin-bottom: 16px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
   overflow: hidden;
 }
-.card-sm { padding: 12px; }
+.card-sm { padding: 16px; }
 .card-dark { background: var(--primary-container); border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15); }
 .card-dark * { color: var(--on-primary); }
 .card-dark .muted { color: var(--on-primary-container); }
@@ -268,8 +268,8 @@ body {
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .stat-tile {
   background: var(--surface-0); border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: var(--r-lg); padding: 12px;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--r-lg); padding: 16px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   overflow: hidden;
 }
 .stat-tile.dark { background: var(--primary-container); border-color: rgba(255, 255, 255, 0.1); }
@@ -545,9 +545,9 @@ select.input-field { background-image: url("data:image/svg+xml,%3Csvg xmlns='htt
 
 /* ── Dynamic Font Scaling Override ── */
 :root {
-  --font-9: 9px; --font-10: 10px; --font-11: 11px; --font-12: 12px; --font-13: 13px;
-  --font-14: 14px; --font-15: 15px; --font-16: 16px; --font-18: 18px;
-  --font-20: 20px; --font-22: 22px; --font-24: 24px; --font-28: 28px;
+  --font-9: 11px; --font-10: 12px; --font-11: 13px; --font-12: 14px; --font-13: 15px;
+  --font-14: 16px; --font-15: 17px; --font-16: 18px; --font-18: 20px;
+  --font-20: 22px; --font-22: 24px; --font-24: 28px; --font-28: 32px;
 }
 
 /* Override all known classes */

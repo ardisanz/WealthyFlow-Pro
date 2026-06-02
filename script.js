@@ -103,7 +103,7 @@ const FinanceLogic = {
             } 
         };
     },
-    calculateSafeToSpend: function (currentBalance, recurringTransactions) {
+    calculateSafeToSpend: function (currentBalance, recurringTransactions, monthlyIncome, monthlySavingsTarget, monthlyExpenses) {
         const now = new Date();
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         const daysLeft = Math.max(1, endOfMonth.getDate() - now.getDate());
@@ -117,7 +117,8 @@ const FinanceLogic = {
             return total;
         }, 0);
 
-        let safeAmount = (currentBalance - upcomingBills) / daysLeft;
+        let budgetLeft = monthlyIncome - monthlySavingsTarget - monthlyExpenses - upcomingBills;
+        let safeAmount = budgetLeft / daysLeft;
         let status = 'safe';
         if (safeAmount < 0) status = 'risk';
         else if (safeAmount < 100000) status = 'caution'; // Arbitrary threshold for "low"
@@ -637,8 +638,6 @@ function moneyApp() {
                 this.isOnline = false;
             });
 
-            this.updateAllDerived();
-
             this.$watch('transactions', () => {
                 this.updateAllDerived();
                 this.$nextTick(() => this.renderCharts());
@@ -648,15 +647,10 @@ function moneyApp() {
             });
 
 
-            this.$nextTick(() => {
-                this.renderCharts();
-                setTimeout(() => { this.isLoading = false; }, 600);
-            });
-
             // Re-render charts when switching to chart tabs
             this.$watch('activeTab', (tab) => {
                 if (tab === 'cashflow' || tab === 'dashboard') {
-                    this.$nextTick(() => this.renderCharts());
+                    setTimeout(() => this.renderCharts(), 50);
                 }
             });
         },
@@ -670,7 +664,20 @@ function moneyApp() {
         },
 
         updateSafeToSpend() {
-            this.safeToSpend = FinanceLogic.calculateSafeToSpend(this.totalSaldo, this.recurringTransactions);
+            let monthlySavTarget = this.getAutoBudgetLimit('Savings');
+            const now = new Date();
+            let monthlyExpenses = this.transactions.filter(t => {
+                let d = new Date(t.date);
+                return t.type === 'expense' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).reduce((s,t) => s + t.amount, 0);
+            
+            this.safeToSpend = FinanceLogic.calculateSafeToSpend(
+                this.totalSaldo, 
+                this.recurringTransactions,
+                this.monthlyIncome,
+                monthlySavTarget,
+                monthlyExpenses
+            );
         },
 
         updateAlerts() {
@@ -881,6 +888,13 @@ function moneyApp() {
         // --- TRANSACTION LOGIC ---
         addTransaction() {
             if (this.newAmount <= 0) return;
+            if (this.transactionType === 'expense' && !this.newCategory) {
+                this.pushNote('Please select a category');
+                return;
+            }
+            if (this.transactionType === 'income' && !this.incomeSource) {
+                this.incomeSource = 'Income';
+            }
             this.isSaving = true;
 
             setTimeout(() => {
@@ -1194,7 +1208,6 @@ function moneyApp() {
         },
 
         renderCharts() {
-            if (!document.getElementById('pieChart')) return;
             const data = FinanceLogic.buildChartData(this.transactions, this.budgets);
             const rootStyle = getComputedStyle(document.documentElement);
             const accentHex = rootStyle.getPropertyValue('--accent').trim() || '#1a56db';
@@ -1206,7 +1219,6 @@ function moneyApp() {
                 g = parseInt(accentHex.slice(3,5), 16);
                 b = parseInt(accentHex.slice(5,7), 16);
             }
-            const accentRgba = `rgba(${r},${g},${b},0.08)`;
             const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#000000';
             const surfaceColor = rootStyle.getPropertyValue('--surface-0').trim() || '#ffffff';
             const outlineColor = rootStyle.getPropertyValue('--outline-2').trim() || '#c6c6cd';
@@ -1214,7 +1226,7 @@ function moneyApp() {
             const ctxPie = document.getElementById('pieChart');
             window.appCharts = window.appCharts || { pie: null, line: null, bar: null };
             
-            if (ctxPie) {
+            if (ctxPie && ctxPie.offsetParent !== null) {
                 if (window.appCharts.pie) window.appCharts.pie.destroy();
                 window.appCharts.pie = new Chart(ctxPie, {
                     type: 'doughnut',
@@ -1247,11 +1259,11 @@ function moneyApp() {
 
 
             const ctxLine = document.getElementById('lineChart');
-            if (ctxLine && data.line.length > 0) {
+            if (ctxLine && data.line.length > 0 && ctxLine.offsetParent !== null) {
                 if (window.appCharts.line) window.appCharts.line.destroy();
                 
                 const ctx2d = ctxLine.getContext('2d');
-                let gradient = ctx2d.createLinearGradient(0, 0, 0, ctxLine.height || 130);
+                let gradient = ctx2d.createLinearGradient(0, 0, 0, ctxLine.clientHeight || 130);
                 gradient.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
                 gradient.addColorStop(1, `rgba(${r},${g},${b},0.0)`);
                 
@@ -1286,7 +1298,7 @@ function moneyApp() {
             }
 
             const ctxBar = document.getElementById('barChart');
-            if (ctxBar) {
+            if (ctxBar && ctxBar.offsetParent !== null) {
                 if (window.appCharts.bar) window.appCharts.bar.destroy();
                 let weeks = Object.keys(data.weekly).sort();
                 let weekVals = weeks.map(w => data.weekly[w]);

@@ -1,8 +1,7 @@
 {
-  "appId": "com.wealthyflow.app",
+  "appId": "com.ardisanz.wealthyflow",
   "appName": "WealthyFlow PRO",
   "webDir": "www",
-  "bundledWebRuntime": false,
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 2000,
