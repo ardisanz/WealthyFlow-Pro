@@ -52,6 +52,6 @@ try {
     if (servicesConfig.exists()) {
         apply plugin: 'com.google.gms.google-services'
     }
-} catch(Exception e) {
+} catch(Exception e) {  
     logger.info("google-services.json not found, google-services plugin not applied. This is normal if you are not using Google services.")
 }

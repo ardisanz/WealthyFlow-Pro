@@ -337,13 +337,13 @@
 
                 <!-- Main Balance & Financial Health Hero -->
                 <div class="card card-dark mb-12 flex items-center justify-between gap-4 p-4 sm:p-6">
-                    <div class="flex-1">
+                    <div class="flex-1 pl-3">
                         <p class="text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-slate-300 mb-1.5" x-text="t('total_balance')">Total Balance</p>
                         <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-none mb-2 truncate" x-text="formatRupiah(totalSaldo)" :title="formatRupiah(totalSaldo)"></h1>
-                        <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')" style="background:rgba(255,255,255,0.15);color:var(--on-primary);border:1px solid rgba(255,255,255,0.2)" x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
+                        <span class="chip" :class="safeToSpend.status==='risk'?'chip-error':(safeToSpend.status==='caution'?'chip-warning':'chip-success')" style="background:rgba(255,255,255,0.15);color:var(--on-primary);border:1px solid rgba(255,255,255,0.2)" x-text="safeToSpend.status==='risk'?t('status_risk'):(safeToSpend.status==='caution'?t('status_caution'):t('status_safe'))"></span>
                     </div>
                     
-                    <div class="health-ring-wrap" style="width:72px;height:72px">
+                    <div class="health-ring-wrap" style="width:72px;height:72px;margin-right:12px">
                         <svg viewBox="0 0 64 64">
                             <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6" />
                             <circle cx="32" cy="32" r="27" fill="none" stroke-width="6" stroke-dasharray="170"
@@ -358,13 +358,13 @@
                 </div>
 
                 <!-- Weekly Overview Header -->
-                <div class="flex justify-between mb-12" style="align-items:flex-start">
+                <div class="flex justify-between items-center mb-12">
                     <div>
-                        <p class="section-label" style="margin-bottom:2px" x-text="t('weekly_overview')">Weekly Overview</p>
-                        <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface)" x-text="t('cashflow_momentum')">
+                        <p class="section-label" style="margin-bottom:6px" x-text="t('weekly_overview')">Weekly Overview</p>
+                        <h1 style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-surface);line-height:1" x-text="t('cashflow_momentum')">
                             Cashflow Momentum</h1>
                     </div>
-                    <span class="chip chip-neutral" style="margin-top:2px">Latest</span>
+                    <span class="chip chip-neutral" x-text="t('latest')">Latest</span>
                 </div>
 
                 <!-- Income / Expense tiles -->
@@ -550,7 +550,7 @@
                             x-text="formatRupiah(safeToSpend.amount)"></p>
                         <span class="chip text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full"
                             :class="safeToSpend.status==='risk'?'bg-red-500/20 text-red-200 border border-red-500/30':(safeToSpend.status==='caution'?'bg-amber-500/20 text-amber-200 border border-amber-500/30':'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30')"
-                            x-text="safeToSpend.status==='risk'?'🔴 Risk':(safeToSpend.status==='caution'?'⚠ Caution':'✓ Safe to go')"></span>
+                            x-text="safeToSpend.status==='risk'?t('status_risk'):(safeToSpend.status==='caution'?t('status_caution'):t('status_safe'))"></span>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                         <div class="bg-white/10 rounded-lg p-2 sm:p-3">
@@ -625,7 +625,7 @@
                     <div class="section-hd">
                         <h2 x-text="t('expense_dist')">Expense Distribution</h2>
                     </div>
-                    <div style="height:170px" x-ignore><canvas id="pieChart"></canvas></div>
+                    <div class="chart-wrap" style="height:170px" x-ignore><canvas id="pieChart"></canvas></div>
                 </div>
 
             </div><!-- /cashflow tab -->
@@ -634,151 +634,195 @@
             <div class="tab-content custom-scroll" x-show="activeTab==='savings'" style="display:none">
 
                 <!-- Auto-Saving System -->
-                <div class="card mb-12">
-                    <div class="section-hd">
-                        <h2 x-text="t('auto_saving')">Auto-Saving System</h2>
+                <div class="card mb-12" style="background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,250,252,0.8)); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04); border: 1px solid rgba(255,255,255,1);">
+                    <div class="section-hd" style="margin-bottom: 8px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;color:var(--accent);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <h2 x-text="t('auto_saving')" style="font-size: 16px; font-weight: 700; letter-spacing:-0.02em;">Auto-Saving System</h2>
+                        </div>
                         <div style="display:flex;gap:6px">
-                            <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
+                            <button class="btn btn-secondary" style="padding:6px 12px;font-size:11px;border-radius:12px;"
                                 @click="showRatioSettings=true">Ratio</button>
-                            <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
+                            <button class="btn btn-secondary" style="padding:6px 12px;font-size:11px;border-radius:12px;"
                                 @click="showAddCategory=true">Category</button>
                         </div>
                     </div>
-                    <p style="font-size:12px;color:var(--outline);margin-bottom:12px">Allocated based on your <span
-                            style="font-weight:600;color:var(--on-surface)"
-                            x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
+                    <p style="font-size:12px;color:var(--outline);margin-bottom:16px">Allocated based on your <span class="chip chip-success" style="font-size:9px;padding:2px 6px;margin:0 2px" x-text="ratios.Needs+'/'+ratios.Wants+'/'+ratios.Savings"></span> rule strategy.</p>
+                    
                     <template x-if="suggestions.length>0">
-                        <div class="alert-banner warning mb-12" style="margin-bottom:12px">
-                            <span>💡</span>
+                        <div class="alert-banner mb-12" style="background:var(--warning-bg); border-left:3px solid var(--warning); border-radius:var(--r-sm); padding:10px 12px; display:flex; gap:10px; align-items:flex-start; margin-bottom:16px;">
+                            <span style="font-size:14px;margin-top:2px;">💡</span>
                             <div class="flex-1">
-                                <p class="alert-msg" x-text="suggestions[0].message"></p>
-                                <div style="display:flex;gap:6px;margin-top:8px">
-                                    <button class="btn"
-                                        style="background:var(--warning);color:#fff;padding:4px 10px;font-size:11px;border-radius:var(--r-sm)"
-                                        @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
-                                    <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px"
-                                        @click="ignoreSuggestion()">Ignore</button>
+                                <p style="font-size:11px;color:var(--warning);line-height:1.4;margin-bottom:8px;" x-text="suggestions[0].message"></p>
+                                <div style="display:flex;gap:6px;">
+                                    <button class="btn" style="background:var(--warning);color:#fff;padding:4px 12px;font-size:11px;border-radius:8px;font-weight:600;" @click="applySuggestion(suggestions[0].newRatios)">Apply</button>
+                                    <button class="btn" style="background:transparent;border:1px solid rgba(180, 83, 9, 0.2);color:var(--warning);font-size:11px;padding:4px 12px;border-radius:8px;" @click="ignoreSuggestion()">Ignore</button>
                                 </div>
                             </div>
                         </div>
                     </template>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;margin-top:12px">
+                    
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
                         <template x-for="type in ['Needs','Wants','Savings']" :key="type">
-                            <div class="flex flex-col items-center text-center p-2 rounded-xl"
-                                 style="background:var(--surface-1);border:1px solid var(--outline-2);position:relative;overflow:hidden">
+                            <div class="flex flex-col items-center text-center p-3 rounded-2xl"
+                                 style="background:rgba(255, 255, 255, 0.35); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255, 255, 255, 0.5); border-top:1px solid rgba(255, 255, 255, 1); border-left:1px solid rgba(255, 255, 255, 1); box-shadow:0 8px 24px rgba(15, 23, 42, 0.04); position:relative; overflow:hidden; transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"
+                                 onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(15, 23, 42, 0.08)';" 
+                                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 24px rgba(15, 23, 42, 0.04)';">
                                 
-                                <p style="font-size:11px;font-weight:700;color:var(--on-surface);margin-bottom:8px" x-text="type"></p>
+                                <p style="font-size:11px;font-weight:700;color:var(--on-surface);margin-bottom:12px;letter-spacing:0.02em;" x-text="type"></p>
                                 
-                                <div class="health-ring-wrap" style="width:52px;height:52px;margin:0 auto">
+                                <div class="health-ring-wrap" style="width:56px;height:56px;margin:0 auto">
                                     <svg viewBox="0 0 64 64" style="width:100%;height:100%">
-                                        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6" />
-                                        <circle cx="32" cy="32" r="27" fill="none" stroke-width="6" stroke-dasharray="170"
+                                        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="5" />
+                                        <circle cx="32" cy="32" r="27" fill="none" stroke-width="5" stroke-dasharray="170"
                                             :stroke-dashoffset="isLoading?170:(170-(170*Math.min(getTypePercent(type),100)/100))"
                                             :stroke="type==='Needs'?'var(--accent)':(type==='Wants'?'var(--warning)':'var(--success)')"
-                                            stroke-linecap="round" style="transition:stroke-dashoffset 1s ease" />
+                                            stroke-linecap="round" style="transition:stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)" />
                                     </svg>
                                     <div class="health-ring-center">
-                                        <span class="health-score" style="font-size:11px;font-weight:700;color:var(--on-surface)" x-text="getTypePercent(type)+'%'"></span>
+                                        <span class="health-score" style="font-size:12px;font-weight:800;color:var(--on-surface)" x-text="getTypePercent(type)+'%'"></span>
                                     </div>
                                 </div>
                                 
-                                <span class="chip" :class="type==='Needs'?'chip-accent':(type==='Wants'?'chip-warning':'chip-success')"
-                                      style="margin-top:8px;font-size:9px;padding:1px 6px"
-                                      x-text="ratios[type]+'%'"></span>
+                                <span style="margin-top:10px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;"
+                                      :style="type==='Needs'?'background:var(--accent-bg);color:var(--accent)':(type==='Wants'?'background:var(--warning-bg);color:var(--warning)':'background:var(--success-bg);color:var(--success)')"
+                                      x-text="ratios[type]+'% Limit'"></span>
                                 
-                                <p class="truncate" style="font-size:10px;font-weight:700;color:var(--on-surface);margin-top:8px;width:100%;line-height:1.2" x-text="formatRupiah(getTypeSpending(type))" :title="formatRupiah(getTypeSpending(type))"></p>
-                                <p class="truncate" style="font-size:8px;color:var(--outline);margin-top:2px;width:100%;line-height:1" x-text="'/ '+formatRupiah(getAutoBudgetLimit(type))" :title="'Limit: '+formatRupiah(getAutoBudgetLimit(type))"></p>
+                                <p class="truncate" style="font-size:11px;font-weight:700;color:var(--on-surface);margin-top:8px;width:100%;line-height:1.2" x-text="formatRupiah(getTypeSpending(type))" :title="formatRupiah(getTypeSpending(type))"></p>
+                                <p class="truncate" style="font-size:9px;color:var(--outline);margin-top:2px;width:100%;line-height:1" x-text="'of '+formatRupiah(getAutoBudgetLimit(type))" :title="'Limit: '+formatRupiah(getAutoBudgetLimit(type))"></p>
                             </div>
                         </template>
                     </div>
 
-                    <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px;background:var(--surface-2);padding:10px;border-radius:var(--r-sm);font-size:11px;color:var(--on-surface-2)">
-                        <p><strong>Needs:</strong> Essential living expenses and bills.</p>
-                        <p><strong>Wants:</strong> Lifestyle, hobbies, and entertainment.</p>
-                        <p><strong>Savings:</strong> Emergency fund and future investments.</p>
+                    <div style="display:grid;gap:8px;margin-top:16px;background:rgba(241, 245, 249, 0.6);padding:12px;border-radius:12px; border: 1px dotted rgba(200,200,200,0.5);">
+                        <div style="display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--on-surface-2);">
+                            <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:4px;"></div>
+                            <p style="line-height:1.3"><strong>Needs:</strong> Essential living expenses and bills.</p>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--on-surface-2);">
+                            <div style="width:6px;height:6px;border-radius:50%;background:var(--warning);margin-top:4px;"></div>
+                            <p style="line-height:1.3"><strong>Wants:</strong> Lifestyle, hobbies, and entertainment.</p>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;font-size:11px;color:var(--on-surface-2);">
+                            <div style="width:6px;height:6px;border-radius:50%;background:var(--success);margin-top:4px;"></div>
+                            <p style="line-height:1.3"><strong>Savings:</strong> Emergency fund and investments.</p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Financial Health -->
-                <div class="card mb-12">
-                    <div class="section-hd">
-                        <h2 x-text="t('financial_health')">Financial Health</h2>
-                        <span class="chip"
-                            :class="healthScore.score<=40?'chip-error':(healthScore.score<=70?'chip-warning':'chip-success')"
-                            x-text="healthScore.status"></span>
+                <div class="card mb-12" style="background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(250,250,250,0.85)); box-shadow: 0 8px 24px rgba(0,0,0,0.03); border:1px solid #fff;">
+                    <div class="section-hd" style="margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:var(--success-bg);display:flex;align-items:center;justify-content:center;color:var(--success);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                            </div>
+                            <h2 x-text="t('financial_health')" style="font-size:16px;font-weight:700;">Financial Health</h2>
+                        </div>
+                        <div style="padding:4px 10px; border-radius:12px; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; gap:4px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);"
+                            :class="healthScore.score<=40?'chip-error':(healthScore.score<=70?'chip-warning':'chip-success')">
+                            <span style="width:6px;height:6px;border-radius:50%;background:currentColor;"></span>
+                            <span x-text="healthScore.status"></span>
+                        </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-                        <div class="health-ring-wrap">
+                    
+                    <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;background:#fff;border-radius:20px;padding:16px;box-shadow:inset 0 0 0 1px var(--outline-2), 0 4px 12px rgba(0,0,0,0.02)">
+                        <div class="health-ring-wrap" style="width:72px;height:72px;flex-shrink:0;">
                             <svg viewBox="0 0 64 64">
-                                <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="6" />
-                                <circle cx="32" cy="32" r="27" fill="none" stroke-width="6" stroke-dasharray="170"
+                                <circle cx="32" cy="32" r="27" fill="none" stroke="var(--surface-2)" stroke-width="5" />
+                                <circle cx="32" cy="32" r="27" fill="none" stroke-width="5" stroke-dasharray="170"
                                     :stroke-dashoffset="isLoading?170:(170-(170*healthScore.score/100))"
                                     :stroke="healthScore.score<=40?'var(--error)':(healthScore.score<=70?'#d97706':'var(--success)')"
-                                    stroke-linecap="round" style="transition:stroke-dashoffset 1s ease" />
+                                    stroke-linecap="round" style="transition:stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)" />
                             </svg>
                             <div class="health-ring-center">
-                                <span class="health-score" x-text="healthScore.score"></span>
-                                <span class="health-score-label">Score</span>
+                                <span class="health-score" style="font-size:20px;font-weight:800;" x-text="healthScore.score"></span>
+                                <span style="font-size:8px;font-weight:600;color:var(--outline);text-transform:uppercase;">/ 100</span>
                             </div>
                         </div>
                         <div class="flex-1">
-                            <p style="font-size:13px;color:var(--on-surface-2);line-height:1.5"
+                            <p style="font-size:12px;color:var(--on-surface-2);line-height:1.6;font-weight:500;"
                                 x-text="healthScore.explanation"></p>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px">
-                        <div class="flex flex-col items-center text-center p-2 rounded-xl"
-                             style="background:var(--surface-1);border:1px solid var(--outline-2)">
-                            <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.05em">Saving</p>
-                            <p style="font-size:14px;font-weight:700;color:var(--success);margin-top:4px" x-text="healthScore.breakdown.savingsRate+'%'"></p>
+                    
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                        <div class="flex flex-col items-center justify-center p-3 rounded-2xl"
+                             style="background:linear-gradient(to bottom, #fff, var(--surface-2)); border:1px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+                            <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--success-bg);color:var(--success);border-radius:6px;margin-bottom:6px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/></svg>
+                            </div>
+                            <p style="font-size:14px;font-weight:800;color:var(--success);margin-bottom:2px;" x-text="healthScore.breakdown.savingsRate+'%'"></p>
+                            <p style="font-size:9px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.02em">Saving Rate</p>
                         </div>
-                        <div class="flex flex-col items-center text-center p-2 rounded-xl"
-                             style="background:var(--surface-1);border:1px solid var(--outline-2)">
-                            <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.05em">Wants</p>
-                            <p style="font-size:14px;font-weight:700;margin-top:4px"
+                        <div class="flex flex-col items-center justify-center p-3 rounded-2xl"
+                            style="background:linear-gradient(to bottom, #fff, var(--surface-2)); border:1px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+                            <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--warning-bg);color:var(--warning);border-radius:6px;margin-bottom:6px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <p style="font-size:14px;font-weight:800;margin-bottom:2px;"
                                 :style="healthScore.breakdown.wantsLevel==='High'?'color:var(--error)':'color:var(--success)'"
                                 x-text="healthScore.breakdown.wantsLevel"></p>
+                            <p style="font-size:9px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.02em">Wants Lvl</p>
                         </div>
-                        <div class="flex flex-col items-center text-center p-2 rounded-xl"
-                             style="background:var(--surface-1);border:1px solid var(--outline-2)">
-                            <p style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.05em">Stable</p>
-                            <p style="font-size:14px;font-weight:700;margin-top:4px"
+                        <div class="flex flex-col items-center justify-center p-3 rounded-2xl"
+                            style="background:linear-gradient(to bottom, #fff, var(--surface-2)); border:1px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+                            <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--accent-bg);color:var(--accent);border-radius:6px;margin-bottom:6px;">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                            <p style="font-size:14px;font-weight:800;margin-bottom:2px;"
                                 :style="healthScore.breakdown.consistency==='Stable'?'color:var(--success)':'color:var(--error)'"
                                 x-text="healthScore.breakdown.consistency==='Stable'?'Yes':'No'"></p>
+                            <p style="font-size:9px;font-weight:600;text-transform:uppercase;color:var(--outline);letter-spacing:0.02em">Consistent</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Recurring Bills -->
-                <div class="card">
-                    <div class="section-hd">
-                        <h2 x-text="t('recurring_bills')">Recurring Bills</h2>
-                        <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px"
-                            @click="showRecurring=true">+ Add</button>
+                <div class="card" style="background:#fff; box-shadow: 0 8px 30px rgba(0,0,0,0.04); border:none;">
+                    <div class="section-hd" style="border-bottom:1px solid var(--outline-2); padding-bottom:12px; margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:var(--error-container);display:flex;align-items:center;justify-content:center;color:var(--error);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <h2 x-text="t('recurring_bills')" style="font-size:16px;font-weight:700;">Recurring Bills</h2>
+                        </div>
+                        <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px;border-radius:12px;font-weight:700;display:flex;align-items:center;gap:4px;"
+                            @click="showRecurring=true">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                            Add
+                        </button>
                     </div>
                     <template x-if="recurringTransactions.length===0">
-                        <div class="empty-state" style="padding:16px 0">
-                            <p class="empty-title">No recurring bills</p>
-                            <p class="empty-sub">Add bills that repeat monthly</p>
+                        <div class="empty-state" style="padding:24px 0; background:var(--surface-2); border-radius:12px; margin-top:8px;">
+                            <div style="width:40px;height:40px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);color:var(--outline);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                            </div>
+                            <p class="empty-title" style="font-size:13px;font-weight:700;color:var(--on-surface);">No recurring bills</p>
+                            <p class="empty-sub" style="font-size:11px;color:var(--outline);margin-top:4px;">Add bills that repeat monthly to track easily</p>
                         </div>
                     </template>
-                    <template x-for="r in sortedRecurring" :key="r.id">
-                        <div class="list-item">
-                            <div class="list-icon" style="color:var(--on-surface)" x-html="getCategoryIcon(r.name)">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <template x-for="r in sortedRecurring" :key="r.id">
+                            <div class="list-item" style="padding:12px;border:1px solid var(--outline-2);border-radius:16px;background:var(--surface-0);transition:transform 0.2s;" onmouseover="this.style.transform='translateX(2px)';" onmouseout="this.style.transform='translateX(0)';">
+                                <div class="list-icon" style="color:var(--on-surface);background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.05);" x-html="getCategoryIcon(r.name)">
+                                </div>
+                                <div class="list-main">
+                                    <p class="list-title" style="font-weight:700;font-size:13px;" x-text="r.name"></p>
+                                    <p class="list-sub" style="font-size:10px;margin-top:2px;" :class="getDueDateStatus(r.nextDate)"
+                                        x-text="getDueText(r.nextDate)+' · '+formatDate(r.nextDate)"></p>
+                                </div>
+                                <div class="list-right" style="text-align:right;">
+                                    <p class="list-amount" style="font-weight:800;font-size:13px;" :class="r.type==='income'?'pos':'neg'"
+                                        x-text="(r.type==='income'?'+':'-')+formatRupiah(r.amount)"></p>
+                                    <button @click="deleteRecurring(r.id)"
+                                        style="background:var(--error-container);border:none;cursor:pointer;font-size:10px;color:var(--error);font-weight:700;margin-top:4px;padding:4px 8px;border-radius:6px;transition:0.2s;" onmouseover="this.style.background='var(--error)';this.style.color='#fff';" onmouseout="this.style.background='var(--error-container)';this.style.color='var(--error)';">Remove</button>
+                                </div>
                             </div>
-                            <div class="list-main">
-                                <p class="list-title" x-text="r.name"></p>
-                                <p class="list-sub" :class="getDueDateStatus(r.nextDate)"
-                                    x-text="getDueText(r.nextDate)+' · '+formatDate(r.nextDate)"></p>
-                            </div>
-                            <div class="list-right">
-                                <p class="list-amount" :class="r.type==='income'?'pos':'neg'"
-                                    x-text="(r.type==='income'?'+':'-')+formatRupiah(r.amount)"></p>
-                                <button @click="deleteRecurring(r.id)"
-                                    style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--error);font-weight:600;margin-top:2px">Remove</button>
-                            </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
                 </div>
 
             </div><!-- /savings tab -->

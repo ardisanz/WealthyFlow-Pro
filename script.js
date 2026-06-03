@@ -2,6 +2,32 @@
 
 // --- PURE JS LOGIC ---
 const FinanceLogic = {
+    sanitizeTx: function(transactions) {
+        if (!Array.isArray(transactions)) return [];
+        return transactions.map(t => {
+            let d = new Date(t.date);
+            if (isNaN(d.getTime())) {
+                if (typeof t.date === 'string') {
+                    let parts = t.date.split(/[\/\-]/);
+                    if (parts.length === 3) {
+                        if (parts[2].length === 4) {
+                            d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
+                        }
+                    }
+                }
+                if (isNaN(d.getTime()) && t.id) {
+                    let td = new Date(Number(t.id));
+                    if (!isNaN(td.getTime())) d = td;
+                }
+                if (isNaN(d.getTime())) d = new Date();
+            }
+            return {
+                ...t,
+                amount: Number(t.amount) || 0,
+                date: d.toISOString()
+            };
+        });
+    },
     calculateAllocations: function (income, ratios) {
         return {
             Needs: Math.round(income * (ratios.Needs / 100)),
@@ -135,7 +161,8 @@ const FinanceLogic = {
         if (projection.willGoNegative) {
             alerts.push({
                 type: 'critical',
-                msg: `Balance may run out in ${projection.negativeDay} days!`
+                msgKey: 'balance_run_out',
+                days: projection.negativeDay
             });
         }
 
@@ -150,7 +177,7 @@ const FinanceLogic = {
             if (recentSpending > currentBalance * 0.3 && currentBalance > 0) {
                 alerts.push({
                     type: 'warning',
-                    msg: 'Rapid balance drop detected recently.'
+                    msgKey: 'rapid_drop'
                 });
             }
         }
@@ -164,23 +191,26 @@ const FinanceLogic = {
         let balance = 0;
         let sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
         sorted.forEach(t => {
-            if (t.type === 'income') balance += t.amount;
-            else balance -= t.amount;
+            let amt = Number(t.amount) || 0;
+            if (t.type === 'income') balance += amt;
+            else balance -= amt;
             
             // Group by day for the line chart (take the latest balance for that day)
             let d = new Date(t.date);
+            if (isNaN(d.getTime())) return;
+            
             let dateKey = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
             lineMap.set(dateKey, { x: t.date, y: balance });
             
             if (t.type === 'expense') {
                 const now = new Date();
                 if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-                    let type = budgets[t.category]?.type || 'Needs';
-                    if (pie[type] !== undefined) pie[type] += t.amount;
+                    let type = (budgets[t.category] && budgets[t.category].type) ? budgets[t.category].type : 'Needs';
+                    if (pie[type] !== undefined) pie[type] += amt;
                 }
                 // Better weekly key: Year-WeekNumber
                 let weekStr = d.getFullYear() + '-W' + this.getWeekNumber(d);
-                weekly[weekStr] = (weekly[weekStr] || 0) + t.amount;
+                weekly[weekStr] = (weekly[weekStr] || 0) + amt;
             }
         });
         
@@ -294,7 +324,7 @@ function moneyApp() {
         accentColor: '#000000',
         fontSize: 14,
         showLanguage: false,
-        language: 'sg',
+        language: 'id',
         accentColors: [
             { value: '#000000', label: 'Slate' },
             { value: '#1a56db', label: 'Blue' },
@@ -389,7 +419,13 @@ function moneyApp() {
                     history_title: "Riwayat Transaksi",
                     clear_all: "Hapus Semua",
                     clear_filter: "Hapus filter untuk melihat semua",
-                    select_language: "Pilih Bahasa"
+                    select_language: "Pilih Bahasa",
+                    latest: "Terbaru",
+                    status_risk: "🔴 Berisiko",
+                    status_caution: "⚠ Waspada",
+                    status_safe: "✓ Aman",
+                    balance_run_out: "Saldo mungkin habis dalam {days} hari!",
+                    rapid_drop: "Penurunan saldo yang cepat terdeteksi baru-baru ini."
                 },
                 sg: {
                     dashboard: "Dashboard",
@@ -450,7 +486,13 @@ function moneyApp() {
                     history_title: "Transaction History",
                     clear_all: "Clear All",
                     clear_filter: "Clear filter to see all transactions",
-                    select_language: "Select Language"
+                    select_language: "Select Language",
+                    latest: "Latest",
+                    status_risk: "🔴 Risk",
+                    status_caution: "⚠ Caution",
+                    status_safe: "✓ Safe to go",
+                    balance_run_out: "Balance may run out in {days} days!",
+                    rapid_drop: "Rapid balance drop detected recently."
                 },
                 my: {
                     dashboard: "Papan Pemuka",
@@ -511,7 +553,13 @@ function moneyApp() {
                     history_title: "Sejarah Transaksi",
                     clear_all: "Padam Semua",
                     clear_filter: "Padam tapisan untuk melihat semua",
-                    select_language: "Pilih Bahasa"
+                    select_language: "Pilih Bahasa",
+                    latest: "Terkini",
+                    status_risk: "🔴 Berisiko",
+                    status_caution: "⚠ Berjaga-jaga",
+                    status_safe: "✓ Selamat dibelanja",
+                    balance_run_out: "Baki mungkin habis dalam masa {days} hari!",
+                    rapid_drop: "Penurunan baki mendadak dikesan baru-baru ini."
                 }
             };
             return dict[this.language]?.[key] || dict['sg'][key] || key;
@@ -547,7 +595,7 @@ function moneyApp() {
             this.darkMode = JSON.parse(localStorage.getItem('pro_darkMode')) || false;
             this.accentColor = localStorage.getItem('pro_accentColor') || '#000000';
             this.fontSize = JSON.parse(localStorage.getItem('pro_fontSize')) || 14;
-            this.language = localStorage.getItem('pro_language') || 'sg';
+            this.language = localStorage.getItem('pro_language') || 'id';
             this.applyTheme();
             this.applyFontSize();
 
@@ -581,8 +629,10 @@ function moneyApp() {
                 ];
             }
             
-            this.transactions = JSON.parse(localStorage.getItem('pro_history')) || defaultTx;
-            this.recurringTransactions = JSON.parse(localStorage.getItem('pro_recurring')) || [];
+            let loadedTx = JSON.parse(localStorage.getItem('pro_history')) || defaultTx;
+            this.transactions = FinanceLogic.sanitizeTx(loadedTx);
+            let loadedRec = JSON.parse(localStorage.getItem('pro_recurring')) || [];
+            this.recurringTransactions = FinanceLogic.sanitizeTx(loadedRec);
             this.ratios = JSON.parse(localStorage.getItem('pro_ratios')) || { Needs: 50, Wants: 30, Savings: 20 };
 
             this.tempRatios = { ...this.ratios };
@@ -650,17 +700,21 @@ function moneyApp() {
             // Re-render charts when switching to chart tabs
             this.$watch('activeTab', (tab) => {
                 if (tab === 'cashflow' || tab === 'dashboard') {
-                    setTimeout(() => this.renderCharts(), 50);
+                    // Android WebView needs extra time for DOM layout after display toggle
+                    this.$nextTick(() => {
+                        setTimeout(() => this.renderCharts(), 150);
+                        setTimeout(() => this.renderCharts(), 500);
+                    });
                 }
             });
         },
 
         updateAllDerived() {
             this.checkSuggestions();
+            this.updateAlerts();
             this.updateHealthScore();
             this.updateProjection();
             this.updateSafeToSpend();
-            this.updateAlerts();
         },
 
         updateSafeToSpend() {
@@ -678,30 +732,70 @@ function moneyApp() {
                 monthlySavTarget,
                 monthlyExpenses
             );
+            
+            if (this.alerts && this.alerts.some(a => a.raw && a.raw.msgKey === 'rapid_drop')) {
+                if (this.safeToSpend.status === 'safe') {
+                    this.safeToSpend.status = 'caution';
+                }
+            }
         },
 
         updateAlerts() {
             let currentProj = FinanceLogic.calculateProjection(this.totalSaldo, this.recurringTransactions, 30);
-            this.alerts = FinanceLogic.detectWarnings(this.totalSaldo, currentProj, this.transactions);
+            let rawAlerts = FinanceLogic.detectWarnings(this.totalSaldo, currentProj, this.transactions);
+            this.alerts = rawAlerts.map(a => {
+                if (a.msgKey === 'balance_run_out') {
+                    return { type: a.type, msg: this.t('balance_run_out').replace('{days}', a.days), raw: a };
+                }
+                if (a.msgKey === 'rapid_drop') {
+                    return { type: a.type, msg: this.t('rapid_drop'), raw: a };
+                }
+                return { ...a, raw: a };
+            });
         },
 
 
         // --- DATA SAFETY ---
-        exportData() {
+        async exportData() {
             const data = {
                 transactions: this.transactions,
                 recurringTransactions: this.recurringTransactions,
                 budgets: this.budgets,
                 ratios: this.ratios
             };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `wealthyflow_backup_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            this.pushNote('Data exported successfully!');
+            const jsonStr = JSON.stringify(data, null, 2);
+            const fileName = `wealthyflow_backup_${new Date().toISOString().split('T')[0]}.json`;
+
+            // Check if running on native Android (Capacitor)
+            if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                try {
+                    const { Filesystem, Directory, Encoding } = window.Capacitor.Plugins || {};
+                    if (Filesystem) {
+                        await Filesystem.writeFile({
+                            path: fileName,
+                            data: jsonStr,
+                            directory: 'DOCUMENTS',
+                            encoding: 'utf8'
+                        });
+                        this.pushNote('File tersimpan di Documents/' + fileName);
+                    } else {
+                        this.pushNote('Plugin Filesystem tidak tersedia');
+                    }
+                } catch (err) {
+                    console.error('Export error:', err);
+                    this.pushNote('Gagal menyimpan: ' + (err.message || err));
+                }
+            } else {
+                // Fallback for web browser
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.pushNote('Data exported successfully!');
+            }
         },
         triggerImport() {
             document.getElementById('importFile').click();
@@ -713,9 +807,24 @@ function moneyApp() {
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (data.transactions) this.transactions = data.transactions;
-                    if (data.recurringTransactions) this.recurringTransactions = data.recurringTransactions;
-                    if (data.budgets) this.budgets = data.budgets;
+                    if (data.transactions) {
+                        this.transactions = FinanceLogic.sanitizeTx(data.transactions);
+                    }
+                    if (data.recurringTransactions) {
+                        this.recurringTransactions = FinanceLogic.sanitizeTx(data.recurringTransactions);
+                    }
+                    if (data.budgets) {
+                        // Jika budget dari versi lama dan tidak punya property type
+                        let importedBudgets = {};
+                        for (let k in data.budgets) {
+                            if (typeof data.budgets[k] === 'string') {
+                                importedBudgets[k] = { type: data.budgets[k] };
+                            } else {
+                                importedBudgets[k] = data.budgets[k];
+                            }
+                        }
+                        this.budgets = importedBudgets;
+                    }
                     if (data.ratios) this.ratios = data.ratios;
                     this.saveData();
                     this.updateAllDerived();
@@ -739,7 +848,7 @@ function moneyApp() {
             this.projection.days30 = proj30.balance;
 
             if (proj30.willGoNegative) {
-                this.projection.warning = `Warning: Your balance may go negative in ${proj30.negativeDay} days!`;
+                this.projection.warning = this.t('balance_run_out').replace('{days}', proj30.negativeDay);
             } else {
                 this.projection.warning = null;
             }
@@ -1045,6 +1154,19 @@ function moneyApp() {
             localStorage.setItem('pro_recurring', JSON.stringify(this.recurringTransactions));
         },
 
+        // Safely destroy all chart instances to prevent "Canvas already in use" errors
+        safeDestroyCharts() {
+            if (!window.appCharts) return;
+            ['pie', 'line', 'bar'].forEach(key => {
+                try {
+                    if (window.appCharts[key]) {
+                        window.appCharts[key].destroy();
+                        window.appCharts[key] = null;
+                    }
+                } catch(e) {}
+            });
+        },
+
         setCategoryFilter(cat) {
             if (this.categoryFilter === cat) this.categoryFilter = null;
             else this.categoryFilter = cat;
@@ -1059,12 +1181,22 @@ function moneyApp() {
         clearHistory() {
             this.confirmModal = {
                 show: true,
-                msg: 'Clear all transaction history? This cannot be undone.',
+                msg: 'Hapus semua riwayat transaksi? Tindakan ini tidak bisa dibatalkan.',
                 onConfirm: () => {
+                    // 1. Hapus semua chart dulu sebelum data direset
+                    this.safeDestroyCharts();
+                    // 2. Reset data
                     this.transactions = [];
+                    this.recurringTransactions = [];
                     this.saveData();
-                    this.pushNote('History Cleared!');
+                    // 3. Reset semua state turunan
+                    this.updateAllDerived();
+                    this.pushNote('Semua data berhasil dihapus!');
                     this.confirmModal.show = false;
+                    // 4. Render ulang grafik setelah DOM update
+                    this.$nextTick(() => {
+                        setTimeout(() => this.renderCharts(), 200);
+                    });
                 }
             };
         },
@@ -1210,110 +1342,194 @@ function moneyApp() {
         renderCharts() {
             const data = FinanceLogic.buildChartData(this.transactions, this.budgets);
             const rootStyle = getComputedStyle(document.documentElement);
-            const accentHex = rootStyle.getPropertyValue('--accent').trim() || '#1a56db';
+            const accentHex = (rootStyle.getPropertyValue('--accent') || '').trim() || '#1a56db';
+            const primaryColor = (rootStyle.getPropertyValue('--primary') || '').trim() || '#1a56db';
+            const surfaceColor = (rootStyle.getPropertyValue('--surface-0') || '').trim() || '#ffffff';
+            const outlineColor = (rootStyle.getPropertyValue('--outline-2') || '').trim() || '#c6c6cd';
 
-            // Convert hex to rgb for background
-            let r=26, g=86, b=219;
-            if (accentHex.length === 7) {
-                r = parseInt(accentHex.slice(1,3), 16);
-                g = parseInt(accentHex.slice(3,5), 16);
-                b = parseInt(accentHex.slice(5,7), 16);
+            // Parse accent to rgb for gradient
+            let r = 26, g = 86, b = 219;
+            if (accentHex.startsWith('#') && accentHex.length === 7) {
+                r = parseInt(accentHex.slice(1, 3), 16);
+                g = parseInt(accentHex.slice(3, 5), 16);
+                b = parseInt(accentHex.slice(5, 7), 16);
             }
-            const primaryColor = rootStyle.getPropertyValue('--primary').trim() || '#000000';
-            const surfaceColor = rootStyle.getPropertyValue('--surface-0').trim() || '#ffffff';
-            const outlineColor = rootStyle.getPropertyValue('--outline-2').trim() || '#c6c6cd';
 
+            // Helper: format large numbers for Y axis ticks
+            const fmtAxis = (val) => {
+                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'jt';
+                if (val >= 1000) return (val / 1000).toFixed(0) + 'rb';
+                return val;
+            };
+
+            // Destroy all previous chart instances first to avoid "Canvas already in use"
+            this.safeDestroyCharts();
+            window.appCharts = { pie: null, line: null, bar: null };
+
+            // ── PIE / DOUGHNUT CHART ─────────────────────────────────────────
             const ctxPie = document.getElementById('pieChart');
-            window.appCharts = window.appCharts || { pie: null, line: null, bar: null };
-            
-            if (ctxPie && ctxPie.offsetParent !== null) {
-                if (window.appCharts.pie) window.appCharts.pie.destroy();
+            if (ctxPie) {
+                const pieTotal = data.pie.Needs + data.pie.Wants + data.pie.Savings;
+                const pieData = pieTotal > 0
+                    ? [data.pie.Needs, data.pie.Wants, data.pie.Savings]
+                    : [1, 1, 1];
+                const pieColors = pieTotal > 0
+                    ? [accentHex, '#b45309', '#1a6b3a']
+                    : ['#e0e0e0', '#eeeeee', '#f5f5f5'];
+
                 window.appCharts.pie = new Chart(ctxPie, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Needs', 'Wants', 'Savings'],
+                        labels: ['Kebutuhan', 'Keinginan', 'Tabungan'],
                         datasets: [{
-                            data: [data.pie.Needs, data.pie.Wants, data.pie.Savings],
-                            backgroundColor: [accentHex, '#92400e', '#1a6b3a'],
-                            borderWidth: 2,
-                            borderColor: surfaceColor
+                            data: pieData,
+                            backgroundColor: pieColors,
+                            borderWidth: pieTotal > 0 ? 2 : 0,
+                            borderColor: surfaceColor,
+                            hoverOffset: 6
                         }]
                     },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false, 
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
                         plugins: {
-                            legend: { position: 'bottom', labels: { color: '#45464d', font: { size: 11, family: 'Plus Jakarta Sans' } } }
-                        },
-                        onClick: (evt, elements) => {
-                            if (elements.length > 0) {
-                                const index = elements[0].index;
-                                const label = window.appCharts.pie.data.labels[index];
-                                // Map Needs/Wants/Savings to a more useful filter or show category list
-                                this.pushNote(`Filter by type: ${label}`);
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#45464d',
+                                    font: { size: 11, family: 'Plus Jakarta Sans' },
+                                    padding: 12,
+                                    boxWidth: 12
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        if (!pieTotal) return ' Belum ada data';
+                                        const val = ctx.raw;
+                                        const pct = ((val / pieTotal) * 100).toFixed(1);
+                                        return ' ' + ctx.label + ': ' + fmtAxis(val) + ' (' + pct + '%)';
+                                    }
+                                }
                             }
                         }
                     }
                 });
             }
 
-
+            // ── LINE CHART (Balance Over Time) ───────────────────────────────
             const ctxLine = document.getElementById('lineChart');
-            if (ctxLine && data.line.length > 0 && ctxLine.offsetParent !== null) {
-                if (window.appCharts.line) window.appCharts.line.destroy();
-                
-                const ctx2d = ctxLine.getContext('2d');
-                let gradient = ctx2d.createLinearGradient(0, 0, 0, ctxLine.clientHeight || 130);
-                gradient.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
-                gradient.addColorStop(1, `rgba(${r},${g},${b},0.0)`);
-                
-                window.appCharts.line = new Chart(ctxLine, {
-                    type: 'line',
-                    data: {
-                        labels: data.line.map(d => this.formatDate(d.x)),
-                        datasets: [{
-                            label: 'Balance',
-                            data: data.line.map(d => d.y),
-                            borderColor: accentHex,
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true,
-                            backgroundColor: gradient,
-                            pointBackgroundColor: accentHex,
-                            pointBorderColor: '#fff',
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: accentHex
-                        }]
-                    },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false, 
-                        plugins: { legend: { display: false } }, 
-                        scales: { 
-                            x: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { color: '#eceef0' } }, 
-                            y: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { color: '#eceef0' } } 
-                        } 
-                    }
-                });
+            if (ctxLine) {
+                if (data.line.length > 0) {
+                    const chartH = ctxLine.clientHeight || 130;
+                    const ctx2d = ctxLine.getContext('2d');
+                    let gradient = ctx2d.createLinearGradient(0, 0, 0, chartH);
+                    gradient.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',0.25)');
+                    gradient.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',0.0)');
+
+                    window.appCharts.line = new Chart(ctxLine, {
+                        type: 'line',
+                        data: {
+                            labels: data.line.map(d => this.formatDate(d.x)),
+                            datasets: [{
+                                label: 'Saldo',
+                                data: data.line.map(d => d.y),
+                                borderColor: accentHex,
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true,
+                                backgroundColor: gradient,
+                                pointBackgroundColor: accentHex,
+                                pointBorderColor: '#fff',
+                                pointRadius: data.line.length <= 2 ? 5 : 3,
+                                pointHoverRadius: 6,
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: accentHex
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: { duration: 600 },
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: {
+                                    ticks: {
+                                        color: '#76777d',
+                                        font: { size: 9, family: 'Plus Jakarta Sans' },
+                                        maxTicksLimit: 5,
+                                        maxRotation: 0
+                                    },
+                                    grid: { color: '#f0f0f2' }
+                                },
+                                y: {
+                                    ticks: {
+                                        color: '#76777d',
+                                        font: { size: 9, family: 'Plus Jakarta Sans' },
+                                        callback: (val) => fmtAxis(val)
+                                    },
+                                    grid: { color: '#f0f0f2' }
+                                }
+                            }
+                        }
+                    });
+                }
             }
 
+            // ── BAR CHART (Spending Trend) ───────────────────────────────────
             const ctxBar = document.getElementById('barChart');
-            if (ctxBar && ctxBar.offsetParent !== null) {
-                if (window.appCharts.bar) window.appCharts.bar.destroy();
+            if (ctxBar) {
                 let weeks = Object.keys(data.weekly).sort();
                 let weekVals = weeks.map(w => data.weekly[w]);
+
+                if (weeks.length === 0) {
+                    weeks = ['Minggu Ini'];
+                    weekVals = [0];
+                }
+
+                const maxVal = Math.max(...weekVals);
+                const barColors = weekVals.map(v =>
+                    (maxVal > 0 && v === maxVal) ? primaryColor : outlineColor
+                );
+
                 window.appCharts.bar = new Chart(ctxBar, {
                     type: 'bar',
                     data: {
                         labels: weeks,
                         datasets: [{
-                            label: 'Expenses/Week',
+                            label: 'Pengeluaran/Minggu',
                             data: weekVals,
-                            backgroundColor: weekVals.map((v, i) => i === weekVals.indexOf(Math.max(...weekVals)) ? primaryColor : outlineColor),
-                            borderRadius: 4
+                            backgroundColor: barColors,
+                            borderRadius: 5,
+                            borderSkipped: false
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { display: false } }, y: { ticks: { color: '#76777d', font: { size: 10, family: 'Plus Jakarta Sans' } }, grid: { color: '#eceef0' } } } }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 600 },
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: '#76777d',
+                                    font: { size: 9, family: 'Plus Jakarta Sans' },
+                                    maxRotation: 0
+                                },
+                                grid: { display: false }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#76777d',
+                                    font: { size: 9, family: 'Plus Jakarta Sans' },
+                                    callback: (val) => fmtAxis(val)
+                                },
+                                grid: { color: '#f0f0f2' }
+                            }
+                        }
+                    }
                 });
             }
         },
